@@ -181,11 +181,30 @@ export function groupExcelRows(
     });
 
     // 3. Process filtered rows
+    let lastDeclNo = '';
+    let lastTaxNo = '';
+    let lastExpName = '';
+    let lastCurrency = 'USD';
+    let lastInvNo = '';
+    let lastInvDate = '';
+
     filteredRows.forEach((row) => {
-        const declNo = String(getRowValue(row, mapping?.declarationNumber || 'Decl. No') || '').trim();
+        let declNo = String(getRowValue(row, mapping?.declarationNumber || 'Decl. No') || '').trim();
+
+        // If declaration number is blank, inherit from previous row (forward-fill)
+        if (!declNo && lastDeclNo) {
+            declNo = lastDeclNo;
+        } else if (declNo) {
+            lastDeclNo = declNo;
+        }
 
         // Clean invoice number
-        const rawInvNo = String(getRowValue(row, mapping?.invoiceNumber || 'Invoice No') || '').trim();
+        let rawInvNo = String(getRowValue(row, mapping?.invoiceNumber || 'Invoice No') || '').trim();
+        if (!rawInvNo && lastInvNo && declNo === lastDeclNo) {
+            rawInvNo = lastInvNo;
+        } else if (rawInvNo) {
+            lastInvNo = rawInvNo;
+        }
         const cleanedInvNo = cleanInvoiceNumber(rawInvNo) || 'NO_INVOICE';
 
         // Parse dates
@@ -194,14 +213,37 @@ export function groupExcelRows(
         const invDateRaw = mappedInvDateKey 
             ? getRowValue(row, mappedInvDateKey) 
             : (getRowValue(row, 'Invoice Date') || getRowValue(row, 'Export Date'));
-        const invDate = parseExcelDate(invDateRaw);
+        let invDate = parseExcelDate(invDateRaw);
+        if (!invDate && lastInvDate && rawInvNo === lastInvNo) {
+            invDate = lastInvDate;
+        } else if (invDate) {
+            lastInvDate = invDate;
+        }
 
         // Exporter details
-        const taxNo = cleanTaxId(getRowValue(row, mapping?.exporterTaxNo || 'Exporter Tax No'));
-        const expName = String(getRowValue(row, mapping?.exporterName || 'Exporter Name') || '').trim();
+        let taxNo = cleanTaxId(getRowValue(row, mapping?.exporterTaxNo || 'Exporter Tax No'));
+        if (!taxNo && lastTaxNo && declNo === lastDeclNo) {
+            taxNo = lastTaxNo;
+        } else if (taxNo) {
+            lastTaxNo = taxNo;
+        }
+
+        let expName = String(getRowValue(row, mapping?.exporterName || 'Exporter Name') || '').trim();
+        if (!expName && lastExpName && declNo === lastDeclNo) {
+            expName = lastExpName;
+        } else if (expName) {
+            lastExpName = expName;
+        }
 
         // Currency
-        const currency = String(getRowValue(row, mapping?.currencyCode || 'Currency Code') || '').trim().toUpperCase() || 'USD';
+        let currency = String(getRowValue(row, mapping?.currencyCode || 'Currency Code') || '').trim().toUpperCase();
+        if (!currency && lastCurrency && declNo === lastDeclNo) {
+            currency = lastCurrency;
+        } else if (currency) {
+            lastCurrency = currency;
+        } else {
+            currency = 'USD';
+        }
 
         // Remark / reference no
         const mappedNotesKey = mapping?.notes;
