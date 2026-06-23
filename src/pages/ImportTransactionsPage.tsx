@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { 
@@ -850,19 +851,23 @@ export default function ImportTransactionsPage() {
                                 {field.label}
                                 {field.required && <span className="text-rose-500">*</span>}
                               </label>
-                              <select
-                                value={mappingState[field.key] || ''}
-                                onChange={(e) => setMappingState(prev => ({ ...prev, [field.key]: e.target.value }))}
-                                className="h-7 w-full border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-xs px-2 py-0.5 font-sans"
+                              <Select
+                                value={mappingState[field.key] || 'none'}
+                                onValueChange={(val) => setMappingState(prev => ({ ...prev, [field.key]: val === 'none' ? '' : val }))}
                               >
-                                <option value="">-- ไม่กำหนด (ใช้ค่าเริ่มต้น) --</option>
-                                {headers.map(h => (
-                                  <option key={h} value={h}>{h}</option>
-                                ))}
-                                {mappingState[field.key] && !headers.includes(mappingState[field.key]) && (
-                                  <option value={mappingState[field.key]}>{mappingState[field.key]}</option>
-                                )}
-                              </select>
+                                <SelectTrigger className="h-7 w-full text-xs font-sans">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none" className="text-xs font-sans">-- ไม่กำหนด (ใช้ค่าเริ่มต้น) --</SelectItem>
+                                  {headers.map(h => (
+                                    <SelectItem key={h} value={h} className="text-xs font-mono">{h}</SelectItem>
+                                  ))}
+                                  {mappingState[field.key] && !headers.includes(mappingState[field.key]) && (
+                                    <SelectItem value={mappingState[field.key]} className="text-xs font-mono">{mappingState[field.key]}</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
                             </div>
                           ))}
                         </div>
@@ -1184,20 +1189,28 @@ export default function ImportTransactionsPage() {
                                       </TableCell>
                                       <TableCell className="p-2">
                                         {validation?.duplicateStatus !== 'none' ? (
-                                          <select
+                                          <Select
                                             value={settings.duplicateAction}
-                                            onChange={(e) => setRowSettings(prev => ({
+                                            onValueChange={(val) => setRowSettings(prev => ({
                                               ...prev,
-                                              [declNo]: { ...prev[declNo], duplicateAction: e.target.value as any }
+                                              [declNo]: { ...prev[declNo], duplicateAction: val as any }
                                             }))}
-                                            className="h-7 border border-slate-200 dark:border-slate-800 rounded bg-slate-50 dark:bg-slate-900 text-xs px-1 w-[120px] font-sans"
                                             disabled={validation?.duplicateStatus === 'duplicate_blocked'}
                                           >
-                                            <option value="skip">ข้าม (Skip)</option>
-                                            <option value="overwrite" disabled={validation?.duplicateStatus === 'duplicate_blocked'}>
-                                              เขียนทับ (Overwrite)
-                                            </option>
-                                          </select>
+                                            <SelectTrigger className="h-7 w-[120px] text-xs font-sans">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="skip" className="text-xs font-sans">ข้าม (Skip)</SelectItem>
+                                              <SelectItem 
+                                                value="overwrite" 
+                                                disabled={validation?.duplicateStatus === 'duplicate_blocked'}
+                                                className="text-xs font-sans"
+                                              >
+                                                เขียนทับ (Overwrite)
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
                                         ) : (
                                           <span className="text-muted-foreground">-</span>
                                         )}
