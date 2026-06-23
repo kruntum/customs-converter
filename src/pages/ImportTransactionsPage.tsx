@@ -731,11 +731,11 @@ export default function ImportTransactionsPage() {
               }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-200 ${
                 activeTab === 'standard'
-                  ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
             >
-              <FileSpreadsheet className={`h-4 w-4 ${activeTab === 'standard' ? 'text-primary' : 'text-slate-400'}`} />
+              <FileSpreadsheet className={`h-4 w-4 ${activeTab === 'standard' ? 'text-sidebar-accent-foreground' : 'text-slate-400'}`} />
               <span className="font-sans">นำเข้าแบบมาตรฐาน</span>
             </button>
             <button
@@ -745,11 +745,11 @@ export default function ImportTransactionsPage() {
               }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-200 ${
                 activeTab === 'custom'
-                  ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
             >
-              <Layers className={`h-4 w-4 ${activeTab === 'custom' ? 'text-primary' : 'text-slate-400'}`} />
+              <Layers className={`h-4 w-4 ${activeTab === 'custom' ? 'text-sidebar-accent-foreground' : 'text-slate-400'}`} />
               <span className="font-sans">นำเข้าแบบกำหนดเอง</span>
             </button>
             <button
@@ -759,11 +759,11 @@ export default function ImportTransactionsPage() {
               }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-200 ${
                 activeTab === 'settings'
-                  ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground font-semibold'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
             >
-              <Sliders className={`h-4 w-4 ${activeTab === 'settings' ? 'text-primary' : 'text-slate-400'}`} />
+              <Sliders className={`h-4 w-4 ${activeTab === 'settings' ? 'text-sidebar-accent-foreground' : 'text-slate-400'}`} />
               <span className="font-sans">ตั้งค่าการจับคู่คอลัมน์</span>
             </button>
           </div>
