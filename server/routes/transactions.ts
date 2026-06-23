@@ -29,7 +29,7 @@ const transactionSchema = z.object({
     currencyCode: z.string().min(1),
     exchangeRate: z.string().min(1),
     rateDate: z.string().min(1),
-    rateSource: z.enum(['BOT', 'MANUAL', 'THB']).default('BOT'),
+    rateSource: z.enum(['BOT', 'MANUAL', 'THB', 'LOCAL_DB']).default('BOT'),
     // companyId is intentionally excluded — always sourced from middleware
     customerId: z.number().optional().nullable(),
     notes: z.string().optional().nullable(),
