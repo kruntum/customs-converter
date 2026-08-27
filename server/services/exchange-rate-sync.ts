@@ -28,6 +28,7 @@ const LOOKBACK_DAYS = 7;
 interface BotRateRecord {
     period: string;
     buying_transfer: string;
+    selling: string;
 }
 
 interface BotApiResponse {
@@ -75,11 +76,15 @@ async function syncCurrencyRates(currency: string, apiKey: string): Promise<numb
                             rateDate: new Date(d.period),
                         },
                     },
-                    update: { buyingTransfer: d.buying_transfer },
+                    update: {
+                        buyingTransfer: d.buying_transfer,
+                        selling: d.selling || null,
+                    },
                     create: {
                         currencyCode: currency,
                         rateDate: new Date(d.period),
                         buyingTransfer: d.buying_transfer,
+                        selling: d.selling || null,
                     },
                 })
             )

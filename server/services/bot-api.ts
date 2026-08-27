@@ -29,6 +29,7 @@ export interface ExchangeRateResult {
     currencyId: string;
     period: string;
     buyingTransfer: string;
+    selling: string | null;
     source: string;
 }
 
@@ -57,6 +58,7 @@ export async function fetchBotExchangeRate(
                     currencyId: localRate.currencyCode,
                     period: format(localRate.rateDate, 'yyyy-MM-dd'),
                     buyingTransfer: localRate.buyingTransfer.toString(),
+                    selling: localRate.selling ? localRate.selling.toString() : null,
                     source: 'LOCAL_DB'
                 };
             }
@@ -101,6 +103,7 @@ export async function fetchBotExchangeRate(
             currencyId: detail.currency_id,
             period: detail.period,
             buyingTransfer: detail.buying_transfer,
+            selling: detail.selling || null,
             source: 'BOT',
         };
 
@@ -114,12 +117,14 @@ export async function fetchBotExchangeRate(
                     }
                 },
                 update: {
-                    buyingTransfer: detail.buying_transfer
+                    buyingTransfer: detail.buying_transfer,
+                    selling: detail.selling || null,
                 },
                 create: {
                     currencyCode: currency,
                     rateDate: new Date(detail.period),
-                    buyingTransfer: detail.buying_transfer
+                    buyingTransfer: detail.buying_transfer,
+                    selling: detail.selling || null,
                 }
             });
         } catch (cacheError) {
@@ -168,6 +173,7 @@ export async function fetchBotExchangeRateWithFallback(
                     currencyId: localRate.currencyCode,
                     period: format(localRate.rateDate, 'yyyy-MM-dd'),
                     buyingTransfer: localRate.buyingTransfer.toString(),
+                    selling: localRate.selling ? localRate.selling.toString() : null,
                     source: 'LOCAL_DB'
                 };
             }
@@ -234,6 +240,7 @@ export async function fetchBotExchangeRateWithFallback(
             currencyId: mostRecent.currency_id,
             period: mostRecent.period,
             buyingTransfer: mostRecent.buying_transfer,
+            selling: mostRecent.selling || null,
             source: 'BOT',
         };
 
@@ -247,12 +254,14 @@ export async function fetchBotExchangeRateWithFallback(
                     }
                 },
                 update: {
-                    buyingTransfer: mostRecent.buying_transfer
+                    buyingTransfer: mostRecent.buying_transfer,
+                    selling: mostRecent.selling || null,
                 },
                 create: {
                     currencyCode: currency,
                     rateDate: new Date(mostRecent.period),
-                    buyingTransfer: mostRecent.buying_transfer
+                    buyingTransfer: mostRecent.buying_transfer,
+                    selling: mostRecent.selling || null,
                 }
             });
 
@@ -267,12 +276,14 @@ export async function fetchBotExchangeRateWithFallback(
                         }
                     },
                     update: {
-                        buyingTransfer: mostRecent.buying_transfer
+                        buyingTransfer: mostRecent.buying_transfer,
+                        selling: mostRecent.selling || null,
                     },
                     create: {
                         currencyCode: currency,
                         rateDate: new Date(requestedDateOnlyStr),
-                        buyingTransfer: mostRecent.buying_transfer
+                        buyingTransfer: mostRecent.buying_transfer,
+                        selling: mostRecent.selling || null,
                     }
                 });
             }

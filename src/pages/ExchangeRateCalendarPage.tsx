@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { TrendingUp, RefreshCw, Database, Filter, CalendarDays, Check, ChevronsUpDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Database, Filter, CalendarDays, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +23,7 @@ interface ExchangeRateRecord {
     currencyCode: string;
     rateDate: string;
     buyingTransfer: string;
+    selling: string | null;
     createdAt: string;
 }
 
@@ -292,6 +293,12 @@ export default function ExchangeRateCalendarPage() {
                                                         อัตราซื้อ (Buying Transfer)
                                                     </span>
                                                 </TableHead>
+                                                <TableHead className="font-medium text-xs text-right">
+                                                    <span className="flex items-center justify-end gap-1">
+                                                        <TrendingDown className="h-3 w-3" />
+                                                        อัตราขาย (Selling)
+                                                    </span>
+                                                </TableHead>
                                                 <TableHead className="font-medium text-xs text-right">หน่วย</TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -317,6 +324,9 @@ export default function ExchangeRateCalendarPage() {
                                                         </TableCell>
                                                         <TableCell className="text-right font-mono tabular-nums font-medium text-xs py-1">
                                                             {parseFloat(r.buyingTransfer).toFixed(4)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-mono tabular-nums font-medium text-xs py-1">
+                                                            {r.selling ? parseFloat(r.selling).toFixed(4) : <span className="text-muted-foreground">—</span>}
                                                         </TableCell>
                                                         <TableCell className="text-right text-muted-foreground text-xs py-1">
                                                             บาท / 1 {r.currencyCode}

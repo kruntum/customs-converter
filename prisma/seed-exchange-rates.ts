@@ -96,12 +96,14 @@ async function main() {
                                     }
                                 },
                                 update: {
-                                    buyingTransfer: detail.buying_transfer
+                                    buyingTransfer: detail.buying_transfer,
+                                    selling: detail.selling || null,
                                 },
                                 create: {
                                     currencyCode: currency,
                                     rateDate: new Date(detail.period),
-                                    buyingTransfer: detail.buying_transfer
+                                    buyingTransfer: detail.buying_transfer,
+                                    selling: detail.selling || null,
                                 }
                             });
                             insertedCount++;

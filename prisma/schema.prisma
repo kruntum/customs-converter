@@ -407,6 +407,7 @@ model ExchangeRate {
   currencyCode   String   @map("currency_code")
   rateDate       DateTime @map("rate_date") // วันที่ประกาศเรท
   buyingTransfer Decimal  @map("buying_transfer") @db.Decimal(18, 6)
+  selling        Decimal? @map("selling") @db.Decimal(18, 6) // อัตราขาย (nullable เพื่อ backward compat)
   createdAt      DateTime @default(now()) @map("created_at")
 
   currency       Currency @relation(fields: [currencyCode], references: [code], onDelete: Cascade)
