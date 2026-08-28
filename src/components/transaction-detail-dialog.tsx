@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -305,8 +305,14 @@ export function TransactionDetailDialog({
                           </div>
                         </div>
 
+                        {/* Mobile Swipe Hint */}
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:hidden px-3.5 py-1.5 bg-muted/20 border-t">
+                          <MoveHorizontal className="h-3.5 w-3.5 text-primary" />
+                          <span>ปัดหรือเลื่อนซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</span>
+                        </div>
+
                         {/* Direct Horizontal Scroll Container for Items Table */}
-                        <div className="w-full overflow-x-auto border-t">
+                        <div className="w-full overflow-x-auto border-t bg-card/50">
                           <table className="w-full text-xs min-w-[850px] text-left border-collapse">
                             <thead>
                               <tr className="bg-muted/20 border-b text-[11px] text-muted-foreground">
