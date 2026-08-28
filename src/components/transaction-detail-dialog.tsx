@@ -9,15 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   FileText,
   Building,
@@ -31,7 +23,6 @@ import {
   Loader2,
   CalendarDays,
   Hash,
-  MoveHorizontal,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -111,7 +102,7 @@ export function TransactionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[1200px] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
+      <DialogContent className="w-[95vw] sm:max-w-5xl md:max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
         {/* Fixed Header */}
         <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b bg-muted/30 shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
@@ -182,23 +173,23 @@ export function TransactionDetailDialog({
           </div>
         </DialogHeader>
 
-        {/* Scrollable Content Body */}
+        {/* Scrollable Content Body with Defined Height matching TransactionDialog */}
         {loading ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-24 text-muted-foreground min-h-0">
+          <div className="h-[calc(90vh-130px)] flex flex-col items-center justify-center py-24 text-muted-foreground">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
             <p className="text-sm font-medium">กำลังโหลดรายละเอียดใบขนสินค้า...</p>
           </div>
         ) : !transaction ? (
-          <div className="flex-1 flex items-center justify-center py-24 text-muted-foreground text-sm min-h-0">
+          <div className="h-[calc(90vh-130px)] flex items-center justify-center py-24 text-muted-foreground text-sm">
             ไม่พบข้อมูลรายการ
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0 w-full">
+          <ScrollArea className="h-[calc(90vh-130px)] w-full">
             <div className="p-4 sm:p-6 space-y-6">
               {/* Metadata Cards Grid (1 col on mobile, 2 cols on tablet, 4 cols on desktop) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 {/* Customer */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Building className="h-4 w-4 text-indigo-500" />
                     <span>ลูกค้า (Customer)</span>
@@ -214,7 +205,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
                     <span>อัตราแลกเปลี่ยน (Rate)</span>
@@ -228,7 +219,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Invoices Count */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Receipt className="h-4 w-4 text-amber-500" />
                     <span>จำนวนอินวอย (Invoices)</span>
@@ -242,7 +233,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Creator */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <User className="h-4 w-4 text-blue-500" />
                     <span>ผู้บันทึก (Created By)</span>
@@ -314,67 +305,64 @@ export function TransactionDetailDialog({
                           </div>
                         </div>
 
-                        {/* Items Table with Shadcn Horizontal ScrollArea */}
-                        <div className="p-0 border-t">
-                          <ScrollArea className="w-full">
-                            <Table className="text-xs min-w-[820px]">
-                              <TableHeader>
-                                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                                  <TableHead className="h-8 text-[11px] w-12 text-center font-medium">#</TableHead>
-                                  <TableHead className="h-8 text-[11px] font-medium min-w-[220px]">ชื่อสินค้า (Goods Name)</TableHead>
-                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[110px]">น้ำหนักสุทธิ</TableHead>
-                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
-                                    ราคา/หน่วย ({transaction.currencyCode})
-                                  </TableHead>
-                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
-                                    ราคา/หน่วย (THB)
-                                  </TableHead>
-                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[140px]">
-                                    ราคารวม ({transaction.currencyCode})
-                                  </TableHead>
-                                  <TableHead className="h-8 text-[11px] text-right font-medium text-primary min-w-[140px]">
-                                    ราคารวม (THB)
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {inv.items && inv.items.length > 0 ? (
-                                  inv.items.map((item, itemIdx) => (
-                                    <TableRow key={item.id || itemIdx} className="hover:bg-muted/25 transition-colors">
-                                      <TableCell className="py-2.5 text-xs text-center text-muted-foreground font-mono">
-                                        {item.itemNo || itemIdx + 1}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs font-medium">
-                                        {item.goodsName}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs text-right text-muted-foreground font-mono">
-                                        {item.netWeight ? formatNumber(item.netWeight, 3) : '-'}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs text-right font-mono">
-                                        {formatNumber(item.price, 4)}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs text-right font-mono text-muted-foreground">
-                                        ฿{formatNumber(item.priceTHB, 2)}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs text-right font-mono font-medium">
-                                        {formatNumber(item.totalPrice, 4)}
-                                      </TableCell>
-                                      <TableCell className="py-2.5 text-xs text-right font-mono font-bold text-primary">
-                                        ฿{formatNumber(item.totalPriceTHB, 2)}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))
-                                ) : (
-                                  <TableRow>
-                                    <TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-xs">
-                                      ไม่มีรายการสินค้า
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                            <ScrollBar orientation="horizontal" className="h-2.5 bg-muted/30" />
-                          </ScrollArea>
+                        {/* Direct Horizontal Scroll Container for Items Table */}
+                        <div className="w-full overflow-x-auto border-t">
+                          <table className="w-full text-xs min-w-[850px] text-left border-collapse">
+                            <thead>
+                              <tr className="bg-muted/20 border-b text-[11px] text-muted-foreground">
+                                <th className="h-8 px-3 text-center font-medium w-12">#</th>
+                                <th className="h-8 px-3 font-medium min-w-[220px]">ชื่อสินค้า (Goods Name)</th>
+                                <th className="h-8 px-3 text-right font-medium min-w-[110px]">น้ำหนักสุทธิ</th>
+                                <th className="h-8 px-3 text-right font-medium min-w-[130px]">
+                                  ราคา/หน่วย ({transaction.currencyCode})
+                                </th>
+                                <th className="h-8 px-3 text-right font-medium min-w-[130px]">
+                                  ราคา/หน่วย (THB)
+                                </th>
+                                <th className="h-8 px-3 text-right font-medium min-w-[140px]">
+                                  ราคารวม ({transaction.currencyCode})
+                                </th>
+                                <th className="h-8 px-3 text-right font-medium text-primary min-w-[140px]">
+                                  ราคารวม (THB)
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/40">
+                              {inv.items && inv.items.length > 0 ? (
+                                inv.items.map((item, itemIdx) => (
+                                  <tr key={item.id || itemIdx} className="hover:bg-muted/25 transition-colors">
+                                    <td className="py-2.5 px-3 text-xs text-center text-muted-foreground font-mono">
+                                      {item.itemNo || itemIdx + 1}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs font-medium text-foreground">
+                                      {item.goodsName}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs text-right text-muted-foreground font-mono">
+                                      {item.netWeight ? formatNumber(item.netWeight, 3) : '-'}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs text-right font-mono text-foreground">
+                                      {formatNumber(item.price, 4)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs text-right font-mono text-muted-foreground">
+                                      ฿{formatNumber(item.priceTHB, 2)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs text-right font-mono font-medium text-foreground">
+                                      {formatNumber(item.totalPrice, 4)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-xs text-right font-mono font-bold text-primary">
+                                      ฿{formatNumber(item.totalPriceTHB, 2)}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={7} className="py-6 text-center text-muted-foreground text-xs">
+                                    ไม่มีรายการสินค้า
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     ))}
@@ -386,7 +374,6 @@ export function TransactionDetailDialog({
                 )}
               </div>
             </div>
-            <ScrollBar orientation="vertical" />
           </ScrollArea>
         )}
 
