@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { prisma } from '../server/db.ts';
 import { subDays, format } from 'date-fns';
 
