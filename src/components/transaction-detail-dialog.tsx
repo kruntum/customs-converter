@@ -31,6 +31,7 @@ import {
   Loader2,
   CalendarDays,
   Hash,
+  MoveHorizontal,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -110,7 +111,7 @@ export function TransactionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-5xl md:max-w-6xl lg:max-w-7xl h-[92vh] sm:h-[90vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
+      <DialogContent className="w-[95vw] max-w-[1200px] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
         {/* Fixed Header */}
         <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b bg-muted/30 shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
@@ -194,10 +195,10 @@ export function TransactionDetailDialog({
         ) : (
           <ScrollArea className="flex-1 min-h-0 w-full">
             <div className="p-4 sm:p-6 space-y-6">
-              {/* Metadata Cards Grid (1 column on mobile, 2 columns on tablet, 4 on desktop) */}
+              {/* Metadata Cards Grid (1 col on mobile, 2 cols on tablet, 4 cols on desktop) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 {/* Customer */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Building className="h-4 w-4 text-indigo-500" />
                     <span>ลูกค้า (Customer)</span>
@@ -213,7 +214,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
                     <span>อัตราแลกเปลี่ยน (Rate)</span>
@@ -227,7 +228,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Invoices Count */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Receipt className="h-4 w-4 text-amber-500" />
                     <span>จำนวนอินวอย (Invoices)</span>
@@ -241,7 +242,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Creator */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <User className="h-4 w-4 text-blue-500" />
                     <span>ผู้บันทึก (Created By)</span>
@@ -313,64 +314,67 @@ export function TransactionDetailDialog({
                           </div>
                         </div>
 
-                        {/* Items Table with Horizontal Scrollable Container */}
-                        <div className="w-full overflow-x-auto">
-                          <Table className="text-xs min-w-[780px]">
-                            <TableHeader>
-                              <TableRow className="bg-muted/15 hover:bg-muted/15">
-                                <TableHead className="h-8 text-[11px] w-12 text-center font-medium">#</TableHead>
-                                <TableHead className="h-8 text-[11px] font-medium min-w-[200px]">ชื่อสินค้า (Goods Name)</TableHead>
-                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[100px]">น้ำหนักสุทธิ</TableHead>
-                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[120px]">
-                                  ราคาต่อหน่วย ({transaction.currencyCode})
-                                </TableHead>
-                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[120px]">
-                                  ราคาต่อหน่วย (THB)
-                                </TableHead>
-                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
-                                  ราคารวม ({transaction.currencyCode})
-                                </TableHead>
-                                <TableHead className="h-8 text-[11px] text-right font-medium text-primary min-w-[130px]">
-                                  ราคารวม (THB)
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {inv.items && inv.items.length > 0 ? (
-                                inv.items.map((item, itemIdx) => (
-                                  <TableRow key={item.id || itemIdx} className="hover:bg-muted/25 transition-colors">
-                                    <TableCell className="py-2.5 text-xs text-center text-muted-foreground font-mono">
-                                      {item.itemNo || itemIdx + 1}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs font-medium">
-                                      {item.goodsName}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs text-right text-muted-foreground font-mono">
-                                      {item.netWeight ? formatNumber(item.netWeight, 3) : '-'}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs text-right font-mono">
-                                      {formatNumber(item.price, 4)}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs text-right font-mono text-muted-foreground">
-                                      ฿{formatNumber(item.priceTHB, 2)}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs text-right font-mono font-medium">
-                                      {formatNumber(item.totalPrice, 4)}
-                                    </TableCell>
-                                    <TableCell className="py-2.5 text-xs text-right font-mono font-bold text-primary">
-                                      ฿{formatNumber(item.totalPriceTHB, 2)}
+                        {/* Items Table with Shadcn Horizontal ScrollArea */}
+                        <div className="p-0 border-t">
+                          <ScrollArea className="w-full">
+                            <Table className="text-xs min-w-[820px]">
+                              <TableHeader>
+                                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                                  <TableHead className="h-8 text-[11px] w-12 text-center font-medium">#</TableHead>
+                                  <TableHead className="h-8 text-[11px] font-medium min-w-[220px]">ชื่อสินค้า (Goods Name)</TableHead>
+                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[110px]">น้ำหนักสุทธิ</TableHead>
+                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
+                                    ราคา/หน่วย ({transaction.currencyCode})
+                                  </TableHead>
+                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
+                                    ราคา/หน่วย (THB)
+                                  </TableHead>
+                                  <TableHead className="h-8 text-[11px] text-right font-medium min-w-[140px]">
+                                    ราคารวม ({transaction.currencyCode})
+                                  </TableHead>
+                                  <TableHead className="h-8 text-[11px] text-right font-medium text-primary min-w-[140px]">
+                                    ราคารวม (THB)
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {inv.items && inv.items.length > 0 ? (
+                                  inv.items.map((item, itemIdx) => (
+                                    <TableRow key={item.id || itemIdx} className="hover:bg-muted/25 transition-colors">
+                                      <TableCell className="py-2.5 text-xs text-center text-muted-foreground font-mono">
+                                        {item.itemNo || itemIdx + 1}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs font-medium">
+                                        {item.goodsName}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs text-right text-muted-foreground font-mono">
+                                        {item.netWeight ? formatNumber(item.netWeight, 3) : '-'}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs text-right font-mono">
+                                        {formatNumber(item.price, 4)}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs text-right font-mono text-muted-foreground">
+                                        ฿{formatNumber(item.priceTHB, 2)}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs text-right font-mono font-medium">
+                                        {formatNumber(item.totalPrice, 4)}
+                                      </TableCell>
+                                      <TableCell className="py-2.5 text-xs text-right font-mono font-bold text-primary">
+                                        ฿{formatNumber(item.totalPriceTHB, 2)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))
+                                ) : (
+                                  <TableRow>
+                                    <TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-xs">
+                                      ไม่มีรายการสินค้า
                                     </TableCell>
                                   </TableRow>
-                                ))
-                              ) : (
-                                <TableRow>
-                                  <TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-xs">
-                                    ไม่มีรายการสินค้า
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
+                                )}
+                              </TableBody>
+                            </Table>
+                            <ScrollBar orientation="horizontal" className="h-2.5 bg-muted/30" />
+                          </ScrollArea>
                         </div>
                       </div>
                     ))}
