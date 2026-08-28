@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useCustomerStore } from '@/stores/customer-store';
 import { TransactionDialog } from '@/components/transaction-dialog';
+import { TransactionDetailDialog } from '@/components/transaction-detail-dialog';
 import { ProductManagerDialog } from '@/components/product-manager-dialog';
 import { CustomerManagerDialog } from '@/components/customer-manager-dialog';
 import { PageHeader } from '@/components/page-header';
@@ -23,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Loader2, Search, FileText, Pencil, Trash2, ChevronDown, ChevronRight, Package, Users, Download, ChevronsUpDown, Check, Filter } from 'lucide-react';
+import { Plus, Loader2, Search, FileText, Pencil, Trash2, Eye, ChevronDown, ChevronRight, Package, Users, Download, ChevronsUpDown, Check, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { formatNumber } from '@/lib/utils';
@@ -49,6 +50,8 @@ export default function TransactionPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [viewId, setViewId] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [productManagerOpen, setProductManagerOpen] = useState(false);
   const [customerManagerOpen, setCustomerManagerOpen] = useState(false);
   
@@ -367,6 +370,17 @@ export default function TransactionPage() {
                           </TableCell>
                           <TableCell className="text-right py-1" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="gap-1 h-7 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                                onClick={() => {
+                                  setViewId(tx.id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
+                              </Button>
                               <RoleProtect allowedRoles={['OWNER', 'ADMIN', 'DATA_ENTRY']}>
                                 <Button 
                                   variant="ghost" 
@@ -500,6 +514,17 @@ export default function TransactionPage() {
         open={customerManagerOpen}
         onOpenChange={setCustomerManagerOpen}
         companyId={parseInt(companyId || '0')}
+      />
+
+      {/* Transaction Detail View Dialog */}
+      <TransactionDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        transactionId={viewId}
+        onEdit={(id) => {
+          setEditId(id);
+          setDialogOpen(true);
+        }}
       />
 
       {/* Delete confirmation */}
