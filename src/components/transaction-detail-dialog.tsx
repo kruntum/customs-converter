@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -29,6 +29,8 @@ import {
   Copy,
   Check,
   Loader2,
+  CalendarDays,
+  Hash,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -108,24 +110,24 @@ export function TransactionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        {/* Header */}
-        <DialogHeader className="p-4 sm:p-6 pb-3 border-b bg-muted/20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
-                <FileText className="h-6 w-6" />
+      <DialogContent className="max-w-6xl w-[96vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
+        {/* Fixed Header */}
+        <DialogHeader className="p-4 sm:p-6 pb-4 border-b bg-muted/30 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20">
+                <FileText className="h-6 w-6 sm:h-7 sm:w-7" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-base sm:text-lg font-bold">
+                  <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">
                     ใบขนสินค้า #{transaction?.declarationNumber || '...'}
                   </DialogTitle>
                   {transaction && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted"
                       onClick={() => handleCopy(transaction.declarationNumber)}
                       title="คัดลอกเลขที่ใบขน"
                     >
@@ -145,28 +147,31 @@ export function TransactionDetailDialog({
                   {transaction?.rateSource && (
                     <Badge
                       variant={transaction.rateSource === 'BOT' ? 'info' : 'muted'}
-                      className="text-[11px]"
+                      className="text-[11px] font-medium"
                     >
                       {transaction.rateSource}
                     </Badge>
                   )}
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  วันที่ใบขน: {formatDate(transaction?.declarationDate)} • สร้างเมื่อ:{' '}
-                  {formatDateTime(transaction?.createdAt)}
+                <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="h-3.5 w-3.5" /> วันที่ใบขน: {formatDate(transaction?.declarationDate)}
+                  </span>
+                  <span>•</span>
+                  <span>สร้างเมื่อ: {formatDateTime(transaction?.createdAt)}</span>
                 </DialogDescription>
               </div>
             </div>
 
-            {/* Top Total Amount Banner */}
+            {/* Top Total Amount Card */}
             {transaction && (
-              <div className="flex items-center sm:flex-col sm:items-end justify-between bg-primary/5 dark:bg-primary/10 px-3 py-2 rounded-lg border border-primary/20 shrink-0">
-                <span className="text-[11px] text-muted-foreground font-medium">มูลค่ารวมทั้งสิ้น</span>
+              <div className="flex items-center sm:flex-col sm:items-end justify-between bg-primary/5 dark:bg-primary/10 px-4 py-2.5 rounded-xl border border-primary/20 shrink-0">
+                <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">มูลค่ารวมทั้งสิ้น</span>
                 <div className="text-right">
-                  <div className="text-base sm:text-lg font-bold text-primary leading-tight">
+                  <div className="text-xl sm:text-2xl font-bold text-primary leading-tight font-mono">
                     ฿{formatNumber(transaction.thbAmount)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground font-mono mt-0.5">
                     {transaction.currency?.symbol}
                     {formatNumber(transaction.foreignAmount, 4)} {transaction.currencyCode}
                   </div>
@@ -176,75 +181,75 @@ export function TransactionDetailDialog({
           </div>
         </DialogHeader>
 
-        {/* Content Body */}
+        {/* Scrollable Content Body */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-            <p className="text-xs">กำลังโหลดรายละเอียดใบขนสินค้า...</p>
+          <div className="flex-1 flex flex-col items-center justify-center py-24 text-muted-foreground min-h-0">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+            <p className="text-sm font-medium">กำลังโหลดรายละเอียดใบขนสินค้า...</p>
           </div>
         ) : !transaction ? (
-          <div className="py-16 text-center text-muted-foreground text-sm">
+          <div className="flex-1 flex items-center justify-center py-24 text-muted-foreground text-sm min-h-0">
             ไม่พบข้อมูลรายการ
           </div>
         ) : (
-          <ScrollArea className="flex-1 p-4 sm:p-6 overflow-y-auto">
-            <div className="space-y-6">
+          <ScrollArea className="flex-1 min-h-0 w-full">
+            <div className="p-4 sm:p-6 space-y-6">
               {/* Metadata Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                 {/* Customer */}
-                <div className="p-3 rounded-lg border bg-card/60 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-                    <Building className="h-3.5 w-3.5 text-indigo-500" />
-                    <span>ลูกค้า</span>
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
+                    <Building className="h-4 w-4 text-indigo-500" />
+                    <span>ลูกค้า (Customer)</span>
                   </div>
-                  <div className="text-xs font-semibold truncate" title={(transaction as any).customer?.name || '-'}>
+                  <div className="text-sm font-semibold truncate" title={(transaction as any).customer?.name || '-'}>
                     {(transaction as any).customer?.name || '-'}
                   </div>
                   {(transaction as any).customer?.taxId && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                    <div className="text-[11px] text-muted-foreground font-mono mt-1">
                       Tax ID: {(transaction as any).customer.taxId}
                     </div>
                   )}
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="p-3 rounded-lg border bg-card/60 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                    <span>อัตราแลกเปลี่ยน</span>
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                    <span>อัตราแลกเปลี่ยน (Rate)</span>
                   </div>
-                  <div className="text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400">
+                  <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
                     {formatNumber(transaction.exchangeRate, 6)}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-[11px] text-muted-foreground mt-1">
                     วันที่เรท: {formatDate(transaction.rateDate)}
                   </div>
                 </div>
 
                 {/* Invoices Count */}
-                <div className="p-3 rounded-lg border bg-card/60 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-                    <Receipt className="h-3.5 w-3.5 text-amber-500" />
-                    <span>จำนวนอินวอย</span>
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
+                    <Receipt className="h-4 w-4 text-amber-500" />
+                    <span>จำนวนอินวอย (Invoices)</span>
                   </div>
-                  <div className="text-xs font-semibold">
+                  <div className="text-sm font-semibold">
                     {transaction.invoices?.length || 0} ใบกำกับสินค้า
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-[11px] text-muted-foreground mt-1">
                     รวม {transaction.invoices?.reduce((acc, inv) => acc + (inv.items?.length || 0), 0) || 0} รายการสินค้า
                   </div>
                 </div>
 
                 {/* Creator */}
-                <div className="p-3 rounded-lg border bg-card/60 shadow-xs flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-                    <User className="h-3.5 w-3.5 text-blue-500" />
-                    <span>ผู้บันทึก</span>
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
+                    <User className="h-4 w-4 text-blue-500" />
+                    <span>ผู้บันทึก (Created By)</span>
                   </div>
-                  <div className="text-xs font-semibold truncate" title={transaction.user?.name || '-'}>
+                  <div className="text-sm font-semibold truncate" title={transaction.user?.name || '-'}>
                     {transaction.user?.name || '-'}
                   </div>
-                  <div className="text-[10px] text-muted-foreground truncate" title={transaction.user?.email || ''}>
+                  <div className="text-[11px] text-muted-foreground truncate mt-1" title={transaction.user?.email || ''}>
                     {transaction.user?.email || '-'}
                   </div>
                 </div>
@@ -252,45 +257,45 @@ export function TransactionDetailDialog({
 
               {/* Notes (if any) */}
               {transaction.notes && (
-                <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/40 dark:bg-amber-950/20 text-xs">
-                  <span className="font-semibold text-amber-800 dark:text-amber-300 mr-1.5">หมายเหตุ:</span>
-                  <span className="text-amber-900 dark:text-amber-200">{transaction.notes}</span>
+                <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs">
+                  <span className="font-semibold text-amber-800 dark:text-amber-300 mr-2">หมายเหตุ:</span>
+                  <span className="text-amber-900 dark:text-amber-200 leading-relaxed">{transaction.notes}</span>
                 </div>
               )}
 
               {/* Invoices & Items Breakdown */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-bold">รายละเอียดอินวอยและสินค้า (Invoices & Items)</h3>
+                    <Package className="h-5 w-5 text-primary" />
+                    <h3 className="text-base font-bold tracking-tight">รายละเอียดอินวอยและสินค้า (Invoices & Items)</h3>
                   </div>
-                  <Badge variant="outline" className="text-xs font-normal">
+                  <Badge variant="outline" className="text-xs font-normal px-2.5 py-0.5">
                     ทั้งหมด {transaction.invoices?.length || 0} อินวอย
                   </Badge>
                 </div>
 
                 {transaction.invoices && transaction.invoices.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {transaction.invoices.map((inv, invIndex) => (
                       <div
                         key={inv.id || invIndex}
-                        className="rounded-xl border bg-card/80 shadow-xs overflow-hidden"
+                        className="rounded-xl border bg-card shadow-xs overflow-hidden"
                       >
-                        {/* Invoice Sub-header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 px-4 bg-muted/40 border-b gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs">
+                        {/* Invoice Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 px-5 bg-muted/40 border-b gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary font-bold text-xs border border-primary/20">
                               {invIndex + 1}
                             </span>
                             <div>
-                              <div className="text-xs font-bold flex items-center gap-2">
+                              <div className="text-sm font-bold flex items-center gap-2.5">
                                 <span>เลขที่อินวอย: {inv.invoiceNumber}</span>
-                                <Badge variant="secondary" className="text-[10px] h-4 py-0">
+                                <Badge variant="secondary" className="text-[11px] h-5 py-0">
                                   {inv.items?.length || 0} รายการ
                                 </Badge>
                               </div>
-                              <div className="text-[10px] text-muted-foreground">
+                              <div className="text-xs text-muted-foreground mt-0.5">
                                 วันที่อินวอย: {formatDate(inv.invoiceDate)}
                               </div>
                             </div>
@@ -298,34 +303,34 @@ export function TransactionDetailDialog({
 
                           <div className="flex items-center gap-4 text-right self-end sm:self-auto">
                             <div>
-                              <div className="text-xs font-bold text-primary">
+                              <div className="text-sm font-bold text-primary font-mono">
                                 ฿{formatNumber(inv.totalThb)}
                               </div>
-                              <div className="text-[10px] text-muted-foreground">
+                              <div className="text-xs text-muted-foreground font-mono">
                                 {formatNumber(inv.totalForeign, 4)} {transaction.currencyCode}
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Items Table */}
-                        <div className="overflow-x-auto">
-                          <Table className="text-xs">
+                        {/* Items Table with Horizontal & Vertical ScrollArea */}
+                        <div className="w-full overflow-x-auto">
+                          <Table className="text-xs w-full">
                             <TableHeader>
-                              <TableRow className="bg-muted/10 hover:bg-muted/10">
-                                <TableHead className="h-7 text-[10px] w-10 text-center font-medium">#</TableHead>
-                                <TableHead className="h-7 text-[10px] font-medium min-w-[160px]">ชื่อสินค้า (Goods Name)</TableHead>
-                                <TableHead className="h-7 text-[10px] text-right font-medium">น้ำหนักสุทธิ</TableHead>
-                                <TableHead className="h-7 text-[10px] text-right font-medium">
+                              <TableRow className="bg-muted/15 hover:bg-muted/15">
+                                <TableHead className="h-8 text-[11px] w-12 text-center font-medium">#</TableHead>
+                                <TableHead className="h-8 text-[11px] font-medium min-w-[200px]">ชื่อสินค้า (Goods Name)</TableHead>
+                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[100px]">น้ำหนักสุทธิ</TableHead>
+                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[120px]">
                                   ราคาต่อหน่วย ({transaction.currencyCode})
                                 </TableHead>
-                                <TableHead className="h-7 text-[10px] text-right font-medium">
+                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[120px]">
                                   ราคาต่อหน่วย (THB)
                                 </TableHead>
-                                <TableHead className="h-7 text-[10px] text-right font-medium">
+                                <TableHead className="h-8 text-[11px] text-right font-medium min-w-[130px]">
                                   ราคารวม ({transaction.currencyCode})
                                 </TableHead>
-                                <TableHead className="h-7 text-[10px] text-right font-medium text-primary">
+                                <TableHead className="h-8 text-[11px] text-right font-medium text-primary min-w-[130px]">
                                   ราคารวม (THB)
                                 </TableHead>
                               </TableRow>
@@ -333,33 +338,33 @@ export function TransactionDetailDialog({
                             <TableBody>
                               {inv.items && inv.items.length > 0 ? (
                                 inv.items.map((item, itemIdx) => (
-                                  <TableRow key={item.id || itemIdx} className="hover:bg-muted/20">
-                                    <TableCell className="py-2 text-[11px] text-center text-muted-foreground font-mono">
+                                  <TableRow key={item.id || itemIdx} className="hover:bg-muted/25 transition-colors">
+                                    <TableCell className="py-2.5 text-xs text-center text-muted-foreground font-mono">
                                       {item.itemNo || itemIdx + 1}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] font-medium">
+                                    <TableCell className="py-2.5 text-xs font-medium">
                                       {item.goodsName}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] text-right text-muted-foreground font-mono">
+                                    <TableCell className="py-2.5 text-xs text-right text-muted-foreground font-mono">
                                       {item.netWeight ? formatNumber(item.netWeight, 3) : '-'}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] text-right font-mono">
+                                    <TableCell className="py-2.5 text-xs text-right font-mono">
                                       {formatNumber(item.price, 4)}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] text-right font-mono text-muted-foreground">
+                                    <TableCell className="py-2.5 text-xs text-right font-mono text-muted-foreground">
                                       ฿{formatNumber(item.priceTHB, 2)}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] text-right font-mono font-medium">
+                                    <TableCell className="py-2.5 text-xs text-right font-mono font-medium">
                                       {formatNumber(item.totalPrice, 4)}
                                     </TableCell>
-                                    <TableCell className="py-2 text-[11px] text-right font-mono font-semibold text-primary">
+                                    <TableCell className="py-2.5 text-xs text-right font-mono font-bold text-primary">
                                       ฿{formatNumber(item.totalPriceTHB, 2)}
                                     </TableCell>
                                   </TableRow>
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={7} className="py-4 text-center text-muted-foreground text-xs">
+                                  <TableCell colSpan={7} className="py-6 text-center text-muted-foreground text-xs">
                                     ไม่มีรายการสินค้า
                                   </TableCell>
                                 </TableRow>
@@ -371,27 +376,29 @@ export function TransactionDetailDialog({
                     ))}
                   </div>
                 ) : (
-                  <div className="py-6 text-center text-muted-foreground text-xs border rounded-lg">
+                  <div className="py-8 text-center text-muted-foreground text-xs border rounded-xl bg-muted/10">
                     ไม่มีข้อมูลอินวอยในรายการนี้
                   </div>
                 )}
               </div>
             </div>
+            <ScrollBar orientation="vertical" />
           </ScrollArea>
         )}
 
-        {/* Footer Actions */}
-        <DialogFooter className="p-3 px-4 sm:px-6 border-t bg-muted/20 flex flex-row items-center justify-between sm:justify-between">
-          <div className="text-[11px] text-muted-foreground hidden sm:block">
-            ID รายการ: #{transaction?.id || '-'}
+        {/* Fixed Footer */}
+        <DialogFooter className="p-3.5 px-5 sm:px-6 border-t bg-muted/30 shrink-0 flex flex-row items-center justify-between sm:justify-between">
+          <div className="text-xs text-muted-foreground hidden sm:flex items-center gap-1.5 font-mono">
+            <Hash className="h-3.5 w-3.5" />
+            <span>Transaction ID: {transaction?.id || '-'}</span>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2.5 ml-auto">
             {transaction && onEdit && (
               <RoleProtect allowedRoles={['OWNER', 'ADMIN', 'DATA_ENTRY']}>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 h-8 text-xs"
+                  className="gap-1.5 h-8.5 text-xs font-medium"
                   onClick={() => {
                     onOpenChange(false);
                     onEdit(transaction.id);
@@ -405,7 +412,7 @@ export function TransactionDetailDialog({
             <Button
               variant="secondary"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8.5 px-4 text-xs font-medium"
               onClick={() => onOpenChange(false)}
             >
               ปิด
