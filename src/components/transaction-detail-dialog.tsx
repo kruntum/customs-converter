@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   FileText,
   Building,
@@ -189,58 +189,58 @@ export function TransactionDetailDialog({
           </div>
         ) : (
           <ScrollArea className="h-[calc(92vh-130px)] w-full">
-            <div className="p-4 sm:p-6 space-y-6">
-              {/* Metadata Cards Grid (1 col on mobile, 2 cols on tablet, 4 cols on desktop) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
+            <div className="p-4 sm:p-6 space-y-6 w-full max-w-full min-w-0 box-border">
+              {/* Metadata Cards Grid (Responsive 1 -> 2 -> 4 cols, min-w-0 ensures no right clipping) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 w-full min-w-0">
                 {/* Customer */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
-                    <Building className="h-4 w-4 text-indigo-500" />
-                    <span>ลูกค้า (Customer)</span>
+                    <Building className="h-4 w-4 text-indigo-500 shrink-0" />
+                    <span className="truncate">ลูกค้า (Customer)</span>
                   </div>
                   <div className="text-sm font-semibold truncate" title={(transaction as any).customer?.name || '-'}>
                     {(transaction as any).customer?.name || '-'}
                   </div>
                   {(transaction as any).customer?.taxId && (
-                    <div className="text-[11px] text-muted-foreground font-mono mt-1">
+                    <div className="text-[11px] text-muted-foreground font-mono mt-1 truncate">
                       Tax ID: {(transaction as any).customer.taxId}
                     </div>
                   )}
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                    <span>อัตราแลกเปลี่ยน (Rate)</span>
+                    <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span className="truncate">อัตราแลกเปลี่ยน (Rate)</span>
                   </div>
-                  <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400">
+                  <div className="text-sm font-semibold font-mono text-emerald-600 dark:text-emerald-400 truncate">
                     {formatNumber(transaction.exchangeRate, 6)}
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">
+                  <div className="text-[11px] text-muted-foreground mt-1 truncate">
                     วันที่เรท: {formatDate(transaction.rateDate)}
                   </div>
                 </div>
 
                 {/* Invoices Count */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
-                    <Receipt className="h-4 w-4 text-amber-500" />
-                    <span>จำนวนอินวอย (Invoices)</span>
+                    <Receipt className="h-4 w-4 text-amber-500 shrink-0" />
+                    <span className="truncate">จำนวนอินวอย (Invoices)</span>
                   </div>
-                  <div className="text-sm font-semibold">
+                  <div className="text-sm font-semibold truncate">
                     {transaction.invoices?.length || 0} ใบกำกับสินค้า
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-1">
+                  <div className="text-[11px] text-muted-foreground mt-1 truncate">
                     รวม {transaction.invoices?.reduce((acc, inv) => acc + (inv.items?.length || 0), 0) || 0} รายการสินค้า
                   </div>
                 </div>
 
                 {/* Creator */}
-                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
-                    <User className="h-4 w-4 text-blue-500" />
-                    <span>ผู้บันทึก (Created By)</span>
+                    <User className="h-4 w-4 text-blue-500 shrink-0" />
+                    <span className="truncate">ผู้บันทึก (Created By)</span>
                   </div>
                   <div className="text-sm font-semibold truncate" title={transaction.user?.name || '-'}>
                     {transaction.user?.name || '-'}
@@ -260,7 +260,7 @@ export function TransactionDetailDialog({
               )}
 
               {/* Invoices & Items Breakdown */}
-              <div className="space-y-4">
+              <div className="space-y-4 w-full min-w-0">
                 <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-2">
                     <Package className="h-5 w-5 text-primary" />
@@ -272,11 +272,11 @@ export function TransactionDetailDialog({
                 </div>
 
                 {transaction.invoices && transaction.invoices.length > 0 ? (
-                  <div className="space-y-5">
+                  <div className="space-y-5 w-full min-w-0">
                     {transaction.invoices.map((inv, invIndex) => (
                       <div
                         key={inv.id || invIndex}
-                        className="rounded-xl border bg-card shadow-xs overflow-hidden"
+                        className="rounded-xl border bg-card shadow-xs overflow-hidden w-full min-w-0"
                       >
                         {/* Invoice Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 px-4 sm:px-5 bg-muted/40 border-b gap-3">
@@ -310,13 +310,13 @@ export function TransactionDetailDialog({
                         </div>
 
                         {/* Mobile Swipe Hint */}
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:hidden px-3.5 py-1.5 bg-muted/20 border-t">
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:hidden px-3.5 py-1.5 bg-muted/20 border-b">
                           <ArrowLeftRight className="h-3.5 w-3.5 text-primary animate-pulse" />
                           <span>เลื่อนซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</span>
                         </div>
 
-                        {/* Direct Horizontal Scroll Container for Items Table */}
-                        <div className="w-full overflow-x-auto border-t bg-card/50">
+                        {/* Direct Horizontal Scroll Container with Always-Visible ScrollArea */}
+                        <ScrollArea type="always" className="w-full">
                           <table className="w-full text-xs min-w-[850px] text-left border-collapse">
                             <thead>
                               <tr className="bg-muted/20 border-b text-[11px] text-muted-foreground">
@@ -373,7 +373,8 @@ export function TransactionDetailDialog({
                               )}
                             </tbody>
                           </table>
-                        </div>
+                          <ScrollBar orientation="horizontal" className="h-3 bg-muted/40" />
+                        </ScrollArea>
                       </div>
                     ))}
                   </div>
