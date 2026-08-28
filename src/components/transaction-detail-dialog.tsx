@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { formatNumber } from '@/lib/utils';
@@ -42,6 +43,7 @@ interface TransactionDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transactionId: number | null;
+  companyId?: number;
   onEdit?: (id: number) => void;
 }
 
@@ -49,8 +51,12 @@ export function TransactionDetailDialog({
   open,
   onOpenChange,
   transactionId,
+  companyId,
   onEdit,
 }: TransactionDetailDialogProps) {
+  const { companyId: routeCompanyId } = useParams();
+  const activeCompanyId = companyId || (routeCompanyId ? parseInt(routeCompanyId) : 1);
+
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -58,7 +64,8 @@ export function TransactionDetailDialog({
   useEffect(() => {
     if (open && transactionId) {
       setLoading(true);
-      fetch(`/api/transactions/${transactionId}`, { credentials: 'include' })
+      const url = `/api/transactions/${transactionId}?companyId=${activeCompanyId}`;
+      fetch(url, { credentials: 'include' })
         .then((res) => {
           if (!res.ok) throw new Error('ไม่พบข้อมูลรายการ');
           return res.json();
@@ -72,7 +79,7 @@ export function TransactionDetailDialog({
     } else {
       setTransaction(null);
     }
-  }, [open, transactionId, onOpenChange]);
+  }, [open, transactionId, activeCompanyId, onOpenChange]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

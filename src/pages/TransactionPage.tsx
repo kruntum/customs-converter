@@ -521,6 +521,7 @@ export default function TransactionPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         transactionId={viewId}
+        companyId={cId}
         onEdit={(id) => {
           setEditId(id);
           setDialogOpen(true);
