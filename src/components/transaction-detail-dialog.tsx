@@ -110,17 +110,17 @@ export function TransactionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[96vw] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
+      <DialogContent className="w-[95vw] sm:max-w-5xl md:max-w-6xl lg:max-w-7xl h-[92vh] sm:h-[90vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
         {/* Fixed Header */}
-        <DialogHeader className="p-4 sm:p-6 pb-4 border-b bg-muted/30 shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="p-3 rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20">
+        <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b bg-muted/30 shrink-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 sm:p-3 rounded-xl bg-primary/10 text-primary shrink-0 border border-primary/20">
                 <FileText className="h-6 w-6 sm:h-7 sm:w-7" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">
+                  <DialogTitle className="text-base sm:text-lg md:text-xl font-bold tracking-tight">
                     ใบขนสินค้า #{transaction?.declarationNumber || '...'}
                   </DialogTitle>
                   {transaction && (
@@ -147,13 +147,13 @@ export function TransactionDetailDialog({
                   {transaction?.rateSource && (
                     <Badge
                       variant={transaction.rateSource === 'BOT' ? 'info' : 'muted'}
-                      className="text-[11px] font-medium"
+                      className="text-[10px] sm:text-[11px] font-medium"
                     >
                       {transaction.rateSource}
                     </Badge>
                   )}
                 </div>
-                <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5 sm:mt-1 flex items-center gap-2 flex-wrap">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="h-3.5 w-3.5" /> วันที่ใบขน: {formatDate(transaction?.declarationDate)}
                   </span>
@@ -165,10 +165,10 @@ export function TransactionDetailDialog({
 
             {/* Top Total Amount Card */}
             {transaction && (
-              <div className="flex items-center sm:flex-col sm:items-end justify-between bg-primary/5 dark:bg-primary/10 px-4 py-2.5 rounded-xl border border-primary/20 shrink-0">
-                <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">มูลค่ารวมทั้งสิ้น</span>
+              <div className="flex items-center md:flex-col md:items-end justify-between bg-primary/5 dark:bg-primary/10 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-primary/20 shrink-0">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium uppercase tracking-wider">มูลค่ารวมทั้งสิ้น</span>
                 <div className="text-right">
-                  <div className="text-xl sm:text-2xl font-bold text-primary leading-tight font-mono">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-primary leading-tight font-mono">
                     ฿{formatNumber(transaction.thbAmount)}
                   </div>
                   <div className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -194,10 +194,10 @@ export function TransactionDetailDialog({
         ) : (
           <ScrollArea className="flex-1 min-h-0 w-full">
             <div className="p-4 sm:p-6 space-y-6">
-              {/* Metadata Cards Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              {/* Metadata Cards Grid (1 column on mobile, 2 columns on tablet, 4 on desktop) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 {/* Customer */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Building className="h-4 w-4 text-indigo-500" />
                     <span>ลูกค้า (Customer)</span>
@@ -213,7 +213,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Exchange Rate */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
                     <span>อัตราแลกเปลี่ยน (Rate)</span>
@@ -227,7 +227,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Invoices Count */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <Receipt className="h-4 w-4 text-amber-500" />
                     <span>จำนวนอินวอย (Invoices)</span>
@@ -241,7 +241,7 @@ export function TransactionDetailDialog({
                 </div>
 
                 {/* Creator */}
-                <div className="p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
+                <div className="p-3 sm:p-3.5 rounded-xl border bg-card/60 shadow-xs flex flex-col justify-between hover:border-primary/30 transition-colors">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium mb-1.5">
                     <User className="h-4 w-4 text-blue-500" />
                     <span>ผู้บันทึก (Created By)</span>
@@ -268,7 +268,7 @@ export function TransactionDetailDialog({
                 <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-2">
                     <Package className="h-5 w-5 text-primary" />
-                    <h3 className="text-base font-bold tracking-tight">รายละเอียดอินวอยและสินค้า (Invoices & Items)</h3>
+                    <h3 className="text-sm sm:text-base font-bold tracking-tight">รายละเอียดอินวอยและสินค้า (Invoices & Items)</h3>
                   </div>
                   <Badge variant="outline" className="text-xs font-normal px-2.5 py-0.5">
                     ทั้งหมด {transaction.invoices?.length || 0} อินวอย
@@ -283,19 +283,19 @@ export function TransactionDetailDialog({
                         className="rounded-xl border bg-card shadow-xs overflow-hidden"
                       >
                         {/* Invoice Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 px-5 bg-muted/40 border-b gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 px-4 sm:px-5 bg-muted/40 border-b gap-3">
                           <div className="flex items-center gap-3">
-                            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary font-bold text-xs border border-primary/20">
+                            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary font-bold text-xs border border-primary/20 shrink-0">
                               {invIndex + 1}
                             </span>
                             <div>
-                              <div className="text-sm font-bold flex items-center gap-2.5">
+                              <div className="text-xs sm:text-sm font-bold flex items-center gap-2 flex-wrap">
                                 <span>เลขที่อินวอย: {inv.invoiceNumber}</span>
-                                <Badge variant="secondary" className="text-[11px] h-5 py-0">
+                                <Badge variant="secondary" className="text-[10px] sm:text-[11px] h-5 py-0">
                                   {inv.items?.length || 0} รายการ
                                 </Badge>
                               </div>
-                              <div className="text-xs text-muted-foreground mt-0.5">
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
                                 วันที่อินวอย: {formatDate(inv.invoiceDate)}
                               </div>
                             </div>
@@ -303,19 +303,19 @@ export function TransactionDetailDialog({
 
                           <div className="flex items-center gap-4 text-right self-end sm:self-auto">
                             <div>
-                              <div className="text-sm font-bold text-primary font-mono">
+                              <div className="text-xs sm:text-sm font-bold text-primary font-mono">
                                 ฿{formatNumber(inv.totalThb)}
                               </div>
-                              <div className="text-xs text-muted-foreground font-mono">
+                              <div className="text-[11px] text-muted-foreground font-mono">
                                 {formatNumber(inv.totalForeign, 4)} {transaction.currencyCode}
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Items Table with Horizontal & Vertical ScrollArea */}
+                        {/* Items Table with Horizontal Scrollable Container */}
                         <div className="w-full overflow-x-auto">
-                          <Table className="text-xs w-full">
+                          <Table className="text-xs min-w-[780px]">
                             <TableHeader>
                               <TableRow className="bg-muted/15 hover:bg-muted/15">
                                 <TableHead className="h-8 text-[11px] w-12 text-center font-medium">#</TableHead>
@@ -387,7 +387,7 @@ export function TransactionDetailDialog({
         )}
 
         {/* Fixed Footer */}
-        <DialogFooter className="p-3.5 px-5 sm:px-6 border-t bg-muted/30 shrink-0 flex flex-row items-center justify-between sm:justify-between">
+        <DialogFooter className="p-3.5 px-4 sm:px-6 border-t bg-muted/30 shrink-0 flex flex-row items-center justify-between sm:justify-between">
           <div className="text-xs text-muted-foreground hidden sm:flex items-center gap-1.5 font-mono">
             <Hash className="h-3.5 w-3.5" />
             <span>Transaction ID: {transaction?.id || '-'}</span>
