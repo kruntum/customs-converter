@@ -1,19 +1,19 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: currency-db-prod
+    container_name: customs-converter-db-prod
     restart: unless-stopped
     # Bind only to local loopback interface for local backup access, blocking external network access
     ports:
       - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: ${DB_USER:-currency_user}
+      POSTGRES_USER: ${DB_USER:-customs_converter_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME:-currency_db}
+      POSTGRES_DB: ${DB_NAME:-customs_converter_db}
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-currency_user} -d ${DB_NAME:-currency_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-customs_converter_user} -d ${DB_NAME:-customs_converter_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: currency-app-prod
+    container_name: customs-converter-app-prod
     restart: unless-stopped
     ports:
       - "4501:3000"
@@ -30,7 +30,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-currency_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-currency_db}
+      DATABASE_URL: postgresql://${DB_USER:-customs_converter_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-customs_converter_db}
       BOT_API_KEY: ${BOT_API_KEY}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://currency.tummy.cc}

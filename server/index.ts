@@ -12,9 +12,6 @@ import exchangeRateRoutes from './routes/exchange-rates';
 import productRoutes from './routes/products';
 import userRoutes from './routes/users';
 import customerRoutes from './routes/customers';
-import receiptRoutes from './routes/receipts';
-import treasuryRoutes from './routes/treasury';
-import allocationRoutes from './routes/allocations';
 import auditLogRoutes from './routes/audit-logs';
 import dashboardRoutes from './routes/dashboard';
 import exchangeRateAdminRoutes from './routes/exchange-rate-admin.js';
@@ -63,15 +60,6 @@ app.route('/api/rates', exchangeRateRoutes);
 
 app.use('/api/customers/*', authMiddleware);
 app.route('/api/customers', customerRoutes);
-
-app.use('/api/receipts/*', authMiddleware);
-app.route('/api/receipts', receiptRoutes);
-
-app.use('/api/treasury/*', authMiddleware);
-app.route('/api/treasury', treasuryRoutes);
-
-app.use('/api/allocations/*', authMiddleware);
-app.route('/api/allocations', allocationRoutes);
 
 app.use('/api/audit-logs/*', authMiddleware);
 app.route('/api/audit-logs', auditLogRoutes);

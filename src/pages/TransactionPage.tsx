@@ -27,10 +27,8 @@ import { Plus, Loader2, Search, FileText, Pencil, Trash2, ChevronDown, ChevronRi
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { formatNumber } from '@/lib/utils';
-import { useReceiptStore } from '@/stores/receipt-store';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { EmptyState } from '@/components/ui/empty-state';
-import { PaymentStatusBadge } from '@/components/payment-status-badge';
 import { CurrencyBadge } from '@/components/currency-badge';
 
 export default function TransactionPage() {
@@ -38,8 +36,8 @@ export default function TransactionPage() {
   const {
     transactions, pagination, loading, searchQuery,
     setSearchQuery, setCompanyId, setLimit, fetchTransactions, deleteTransaction,
-    filterStatus, filterCurrency, filterCustomerId,
-    setFilterStatus, setFilterCurrency, setFilterCustomerId,
+    filterCurrency, filterCustomerId,
+    setFilterCurrency, setFilterCustomerId,
     filterYear, filterMonth, setFilterYear, setFilterMonth,
   } = useTransactionStore();
 
@@ -57,19 +55,6 @@ export default function TransactionPage() {
   const [expandedTxIds, setExpandedTxIds] = useState<Set<number>>(new Set());
   const [expandedInvIds, setExpandedInvIds] = useState<Set<number>>(new Set());
   const [yearOpen, setYearOpen] = useState(false);
-
-  const { deleteAllocation } = useReceiptStore();
-
-  const handleRemoveAllocation = async (allocId: number) => {
-    if (!window.confirm('คุณต้องการยกเลิกการตัดชำระเงินนี้ใช่หรือไม่? การยกเลิกจะคืนยอดเงินเข้า FCD Wallet')) return;
-    try {
-      await deleteAllocation(allocId, cId);
-      toast.success('ยกเลิกการตัดชำระเงินสำเร็จ');
-      fetchTransactions(pagination.page);
-    } catch (err) {
-      toast.error((err as Error).message);
-    }
-  };
 
   useEffect(() => {
     if (companyId) {
@@ -154,8 +139,6 @@ export default function TransactionPage() {
         'ยอดต่างประเทศ': Number(tx.foreignAmount),
         'ยอด THB': Number(tx.thbAmount),
         'แหล่งอัตรา': tx.rateSource,
-        'สถานะชำระ': tx.paymentStatus,
-        'ตัดชำระแล้ว (THB)': Number(tx.paidThb || 0),
         'เลขที่อินวอย': '',
         'วันที่อินวอย': '',
         'ชื่อสินค้า': '',
@@ -256,17 +239,6 @@ export default function TransactionPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v === 'all' ? '' : v); fetchTransactions(1); }}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
-                <SelectValue placeholder="สถานะทั้งหมด" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">สถานะทั้งหมด</SelectItem>
-                <SelectItem value="PENDING">PENDING</SelectItem>
-                <SelectItem value="PARTIAL">PARTIAL</SelectItem>
-                <SelectItem value="PAID">PAID</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterCurrency} onValueChange={(v) => { setFilterCurrency(v === 'all' ? '' : v); fetchTransactions(1); }}>
               <SelectTrigger className="w-[150px] h-8 text-xs">
                 <SelectValue placeholder="สกุลเงินทั้งหมด" />
@@ -317,8 +289,8 @@ export default function TransactionPage() {
                 ))}
               </SelectContent>
             </Select>
-            {(filterCustomerId || filterStatus || filterCurrency || filterYear || filterMonth) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setFilterCustomerId(''); setFilterStatus(''); setFilterCurrency(''); setFilterYear(''); setFilterMonth(''); fetchTransactions(1); }}>
+            {(filterCustomerId || filterCurrency || filterYear || filterMonth) && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setFilterCustomerId(''); setFilterCurrency(''); setFilterYear(''); setFilterMonth(''); fetchTransactions(1); }}>
                 ล้างตัวกรอง
               </Button>
             )}
@@ -357,7 +329,6 @@ export default function TransactionPage() {
                       <TableHead className="font-medium text-right">ยอดต่างประเทศ</TableHead>
                       <TableHead className="font-medium text-right">ยอด THB</TableHead>
                       <TableHead className="font-medium">แหล่ง</TableHead>
-                      <TableHead className="font-medium text-center">สถานะ</TableHead>
                       <TableHead className="font-medium text-right">จัดการ</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -394,9 +365,6 @@ export default function TransactionPage() {
                               {tx.rateSource}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center py-1">
-                            <PaymentStatusBadge status={tx.paymentStatus} />
-                          </TableCell>
                           <TableCell className="text-right py-1" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <RoleProtect allowedRoles={['OWNER', 'ADMIN', 'DATA_ENTRY']}>
@@ -404,9 +372,7 @@ export default function TransactionPage() {
                                   variant="ghost" 
                                   size="sm" 
                                   className="gap-1 h-7 text-xs"
-                                  disabled={tx.paymentStatus !== 'PENDING'}
                                   onClick={() => handleEdit(tx.id)}
-                                  title={tx.paymentStatus !== 'PENDING' ? 'ไม่สามารถแก้ไขได้เนื่องจากมีการตัดชำระเงินแล้ว กรุณายกเลิกการตัดชำระก่อน' : undefined}
                                 >
                                   <Pencil className="h-3.5 w-3.5" /> แก้ไข
                                 </Button>
@@ -416,9 +382,7 @@ export default function TransactionPage() {
                                   variant="ghost" 
                                   size="sm" 
                                   className="gap-1 h-7 text-xs text-destructive"
-                                  disabled={tx.paymentStatus !== 'PENDING'}
                                   onClick={() => setDeleteId(tx.id)}
-                                  title={tx.paymentStatus !== 'PENDING' ? 'ไม่สามารถลบได้เนื่องจากมีการตัดชำระเงินแล้ว กรุณายกเลิกการตัดชำระก่อน' : undefined}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" /> ลบ
                                 </Button>
@@ -492,52 +456,6 @@ export default function TransactionPage() {
                                     ))}
                                   </TableBody>
                                 </Table>
-
-                                {/* Allocations Section */}
-                                {tx.allocations && tx.allocations.length > 0 && (
-                                  <div className="mt-4 border rounded-md overflow-hidden bg-background">
-                                    <div className="bg-muted/30 px-3 py-1.5 border-b text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                      ประวัติการตัดชำระเงิน (Payment Allocations)
-                                    </div>
-                                    <Table className="text-xs">
-                                      <TableHeader className="bg-muted/10">
-                                        <TableRow className="hover:bg-transparent">
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] text-left">ใบรับเงิน (Receipt ID)</TableHead>
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] text-left">อ้างอิงธนาคาร (Bank Ref.)</TableHead>
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] text-left">วันที่รับเงิน</TableHead>
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] text-right">ยอดเงินตัดชำระ (Applied THB)</TableHead>
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] text-right">ยอดค้างชำระเดิม (Invoice THB)</TableHead>
-                                          <TableHead className="h-7 py-0 px-3 text-[10px] w-[50px] text-center">จัดการ</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {tx.allocations.map((alloc: any) => (
-                                          <TableRow key={alloc.id} className="hover:bg-muted/20">
-                                            <TableCell className="py-1.5 px-3 font-medium text-[11px]">Receipt #{alloc.receiptId}</TableCell>
-                                            <TableCell className="py-1.5 px-3 text-[11px] font-mono text-muted-foreground">{alloc.receipt?.bankReference || '-'}</TableCell>
-                                            <TableCell className="py-1.5 px-3 text-[11px]">{alloc.receipt?.receivedDate ? formatDate(alloc.receipt.receivedDate) : '-'}</TableCell>
-                                            <TableCell className="py-1.5 px-3 text-right text-[11px] font-semibold text-green-600">฿{formatNumber(alloc.appliedThb)}</TableCell>
-                                            <TableCell className="py-1.5 px-3 text-right text-[11px] text-muted-foreground">฿{formatNumber(alloc.invoiceThb)}</TableCell>
-                                            <TableCell className="py-1.5 px-3 text-center">
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                title="ยกเลิกการตัดชำระเงิน"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleRemoveAllocation(alloc.id);
-                                                }}
-                                              >
-                                                <Trash2 className="h-3 w-3" />
-                                              </Button>
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                )}
                               </div>
                             </TableCell>
                           </TableRow>

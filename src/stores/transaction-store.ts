@@ -36,14 +36,11 @@ export interface Transaction {
     companyId: number | null;
     customerId: number | null;
     notes: string | null;
-    paymentStatus: string;
-    paidThb: string;
     createdAt: string;
     updatedAt: string;
     user?: { id: string; name: string; email: string };
     currency?: { code: string; nameTh: string; nameEn: string; symbol: string };
     invoices?: Invoice[];
-    allocations?: any[];
     _count?: { invoices: number };
 }
 
@@ -61,7 +58,6 @@ interface TransactionState {
     error: string | null;
     searchQuery: string;
     companyId: number | null;
-    filterStatus: string;
     filterCurrency: string;
     filterCustomerId: string;
     filterYear: string;
@@ -70,13 +66,11 @@ interface TransactionState {
     setSearchQuery: (query: string) => void;
     setLimit: (limit: number) => void;
     setCompanyId: (companyId: number | null) => void;
-    setFilterStatus: (status: string) => void;
     setFilterCurrency: (currency: string) => void;
     setFilterCustomerId: (customerId: string) => void;
     setFilterYear: (year: string) => void;
     setFilterMonth: (month: string) => void;
     fetchTransactions: (page?: number) => Promise<void>;
-    fetchPendingTransactions: (companyId: number, customerId: number) => Promise<Transaction[]>;
     fetchTransaction: (id: number) => Promise<Transaction>;
     createTransaction: (data: Record<string, unknown>) => Promise<Transaction>;
     updateTransaction: (id: number, data: Record<string, unknown>) => Promise<Transaction>;
@@ -90,7 +84,6 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     error: null,
     searchQuery: '',
     companyId: null,
-    filterStatus: '',
     filterCurrency: '',
     filterCustomerId: '',
     filterYear: '',
@@ -99,7 +92,6 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     setSearchQuery: (query) => set({ searchQuery: query }),
     setLimit: (limit) => set((state) => ({ pagination: { ...state.pagination, limit, page: 1 } })),
     setCompanyId: (companyId) => set({ companyId }),
-    setFilterStatus: (status) => set({ filterStatus: status }),
     setFilterCurrency: (currency) => set({ filterCurrency: currency }),
     setFilterCustomerId: (customerId) => set({ filterCustomerId: customerId }),
     setFilterYear: (year) => set({ filterYear: year }),
@@ -108,11 +100,10 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     fetchTransactions: async (page = 1) => {
         set({ loading: true, error: null });
         try {
-            const { searchQuery, pagination, companyId, filterStatus, filterCurrency, filterCustomerId, filterYear, filterMonth } = get();
+            const { searchQuery, pagination, companyId, filterCurrency, filterCustomerId, filterYear, filterMonth } = get();
             const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
             if (searchQuery) params.set('search', searchQuery);
             if (companyId) params.set('companyId', String(companyId));
-            if (filterStatus) params.set('paymentStatus', filterStatus);
             if (filterCurrency) params.set('currencyCode', filterCurrency);
             if (filterCustomerId) params.set('customerId', filterCustomerId);
             if (filterYear) params.set('year', filterYear);
@@ -127,14 +118,6 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
         } finally {
             set({ loading: false });
         }
-    },
-
-    fetchPendingTransactions: async (companyId, customerId) => {
-        // Pass customerId to the API to avoid client-side truncation when >100 records exist.
-        // Limit is increased to 1000 and combined statuses are fetched in 1 request to optimize load.
-        const baseParams = `companyId=${companyId}&customerId=${customerId}&limit=1000&paymentStatus=PENDING,PARTIAL`;
-        const res = await fetch(`/api/transactions?${baseParams}`, { credentials: 'include' });
-        return res.ok ? (await res.json()).data : [];
     },
 
     fetchTransaction: async (id: number) => {

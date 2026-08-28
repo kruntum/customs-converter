@@ -5,8 +5,6 @@ import {
   Users,
   Building2,
   Coins,
-  ArrowDownToLine,
-  Landmark,
   UserSquare2,
   History,
   FileSpreadsheet,
@@ -55,9 +53,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         { title: "ลูกค้า", url: `/company/${effectiveCompanyId}/customers`, icon: UserSquare2 },
         { title: "รายการ (Transactions)", url: `/company/${effectiveCompanyId}/transactions`, icon: FileText },
         { title: "นำเข้าใบขน Excel", url: `/company/${effectiveCompanyId}/import-transactions`, icon: FileSpreadsheet, allowedRoles: ["OWNER", "ADMIN", "DATA_ENTRY"] },
-        { title: "ลูกหนี้คงค้าง", url: `/company/${effectiveCompanyId}/outstanding`, icon: Users, allowedRoles: ["OWNER", "ADMIN", "FINANCE"] },
-        { title: "รับเงิน", url: `/company/${effectiveCompanyId}/receipts`, icon: ArrowDownToLine },
-        { title: "คลัง (FCD)", url: `/company/${effectiveCompanyId}/treasury`, icon: Landmark, allowedRoles: ["OWNER", "ADMIN", "FINANCE"] },
         { title: "ปฏิทินอัตราแลกเปลี่ยน", url: `/company/${effectiveCompanyId}/exchange-rates`, icon: CalendarDays },
         ...(isAdmin ? [
           { title: "ผู้ใช้", url: "/admin/users", icon: Users },

@@ -48,7 +48,6 @@ transactionRoutes.get('/', async (c) => {
     const companyId = companyUser?.companyId || parseInt((c.req.query('companyId') || c.req.header('x-company-id')) as string);
     const search = c.req.query('search');
 
-    const paymentStatus = c.req.query('paymentStatus');
     const currencyCode = c.req.query('currencyCode');
     const customerId = c.req.query('customerId');
     const year = c.req.query('year');
@@ -61,13 +60,6 @@ transactionRoutes.get('/', async (c) => {
             { invoices: { some: { invoiceNumber: { contains: search, mode: 'insensitive' } } } },
             { invoices: { some: { items: { some: { goodsName: { contains: search, mode: 'insensitive' } } } } } },
         ];
-    }
-    if (paymentStatus) {
-        if (paymentStatus.includes(',')) {
-            where.paymentStatus = { in: paymentStatus.split(',') };
-        } else {
-            where.paymentStatus = paymentStatus;
-        }
     }
     if (currencyCode) {
         where.currencyCode = currencyCode;
@@ -100,10 +92,7 @@ transactionRoutes.get('/', async (c) => {
                     include: { items: { orderBy: { itemNo: 'asc' } } },
                     orderBy: { id: 'asc' },
                 },
-                allocations: {
-                    include: { receipt: true }
-                },
-                _count: { select: { invoices: true, allocations: true } },
+                _count: { select: { invoices: true } },
             },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
@@ -134,9 +123,6 @@ transactionRoutes.get('/:id', async (c) => {
                 include: { items: { orderBy: { itemNo: 'asc' } } },
                 orderBy: { id: 'asc' },
             },
-            allocations: {
-                include: { receipt: true, walletTx: true }
-            }
         },
     });
 
@@ -212,8 +198,6 @@ transactionRoutes.post('/', async (c) => {
             customerId: data.customerId || null,
             createdBy: user.id,
             notes: data.notes || null,
-            paymentStatus: 'PENDING',
-            paidThb: 0,
             invoices: {
                 create: invoicesData.map((inv) => ({
                     invoiceNumber: inv.invoiceNumber,
@@ -296,8 +280,6 @@ transactionRoutes.post('/validate-import', async (c) => {
         },
         select: {
             declarationNumber: true,
-            paymentStatus: true,
-            paidThb: true
         }
     });
 
@@ -325,13 +307,8 @@ transactionRoutes.post('/validate-import', async (c) => {
         let duplicateStatus: 'none' | 'duplicate_eligible' | 'duplicate_blocked' = 'none';
         const existing = existingMap.get(tx.declarationNumber);
         if (existing) {
-            if (existing.paymentStatus === 'PENDING' && existing.paidThb.toNumber() === 0) {
-                duplicateStatus = 'duplicate_eligible';
-                warnings.push('เลขที่ใบขนสินค้านี้มีอยู่แล้วในระบบ (สามารถบันทึกเขียนทับได้เนื่องจากยังไม่มีการชำระเงิน)');
-            } else {
-                duplicateStatus = 'duplicate_blocked';
-                errors.push('เลขที่ใบขนสินค้านี้มีอยู่แล้วในระบบ และมีการตัดชำระเงินแล้ว (ไม่สามารถนำเข้าซ้ำได้)');
-            }
+            duplicateStatus = 'duplicate_eligible';
+            warnings.push('เลขที่ใบขนสินค้านี้มีอยู่แล้วในระบบ (สามารถบันทึกเขียนทับได้)');
         }
 
         // 3. Currency check
@@ -406,7 +383,7 @@ transactionRoutes.post('/confirm-import', async (c) => {
                 // Check duplicate state in database
                 const existing = await tx.transaction.findFirst({
                     where: { companyId, declarationNumber: declNo },
-                    select: { id: true, paymentStatus: true, paidThb: true }
+                    select: { id: true }
                 });
 
                 if (existing) {
@@ -414,9 +391,6 @@ transactionRoutes.post('/confirm-import', async (c) => {
                         continue;
                     }
                     if (duplicateAction === 'overwrite') {
-                        if (existing.paymentStatus !== 'PENDING' || existing.paidThb.toNumber() > 0) {
-                            throw new Error(`ใบขนเลขที่ ${declNo} มีการชำระเงินแล้ว ไม่สามารถเขียนทับได้`);
-                        }
                         // Delete old invoices (cascade deletes invoice_items) and then the transaction itself
                         const invoiceIds = (await tx.invoice.findMany({
                             where: { transactionId: existing.id },
@@ -496,8 +470,6 @@ transactionRoutes.post('/confirm-import', async (c) => {
                         customerId: customerId || null,
                         createdBy: user.id,
                         notes: txn.notes || null,
-                        paymentStatus: 'PENDING',
-                        paidThb: 0,
                         invoices: {
                             create: invoicesData.map((inv) => ({
                                 invoiceNumber: inv.invoiceNumber,
@@ -575,10 +547,6 @@ transactionRoutes.put('/:id', async (c) => {
     const existing = await prisma.transaction.findUnique({ where: { id } });
     if (!existing || existing.companyId !== companyId) return c.json({ error: 'Not found' }, 404);
 
-    if (existing.paymentStatus !== 'PENDING' || existing.paidThb.toNumber() > 0) {
-        return c.json({ error: 'Cannot edit transaction because it is already allocated/paid. Please reverse the allocations first.' }, 400);
-    }
-
     const data = result.data;
     const rate = parseFloat(data.exchangeRate);
 
@@ -613,20 +581,6 @@ transactionRoutes.put('/:id', async (c) => {
     const totalThb = calculated.grandTotalThb;
     const invoicesData = calculated.invoices;
 
-    // Handle payment status protection (cannot reduce transaction total below what's already paid)
-    if (totalThb < existing.paidThb.toNumber()) {
-        return c.json({ error: 'Total THB cannot be less than already paid amount' }, 400);
-    }
-
-    let newStatus = existing.paymentStatus;
-    if (existing.paidThb.toNumber() > 0) {
-        if (existing.paidThb.toNumber() >= totalThb) {
-            newStatus = 'PAID';
-        } else {
-            newStatus = 'PARTIAL';
-        }
-    }
-
     // Delete old invoices (cascade deletes items), then create new
     const tx = await prisma.$transaction(async (tx) => {
         await tx.invoice.deleteMany({ where: { transactionId: id } });
@@ -646,7 +600,6 @@ transactionRoutes.put('/:id', async (c) => {
                 rateSource: data.rateSource,
                 notes: data.notes || null,
                 customerId: data.customerId || null,
-                paymentStatus: newStatus,
                 invoices: {
                     create: invoicesData.map((inv) => ({
                         invoiceNumber: inv.invoiceNumber,
@@ -713,10 +666,6 @@ transactionRoutes.delete('/:id', async (c) => {
 
     const existing = await prisma.transaction.findUnique({ where: { id } });
     if (!existing || existing.companyId !== companyId) return c.json({ error: 'Not found' }, 404);
-
-    if (existing.paidThb.toNumber() > 0) {
-        return c.json({ error: 'Cannot delete transaction with payment records' }, 400);
-    }
 
     // Cascade delete: items -> invoices -> transaction
     await prisma.$transaction(async (tx) => {

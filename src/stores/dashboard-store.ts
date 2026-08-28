@@ -1,16 +1,9 @@
 import { create } from 'zustand';
 
 export interface DashboardStats {
-    netFxGainLoss: number;
-    netLayer1: number;
-    netLayer2: number;
-    layer1ByMonth: Record<string, number>;
-    layer1ByCurrency: Record<string, number>;
-    layer2ByMonth: Record<string, number>;
-    layer2ByCurrency: Record<string, number>;
+    thbByMonth: Record<string, number>;
+    thbByCurrency: Record<string, number>;
     topCustomers: { name: string; gain: number }[];
-    currentExposure: { currencyCode: string; balanceFcy: number; avgCostRate: number; estimatedThbValue: number }[];
-    totalFcdValueThb: number;
     totalUnpaidCount: number;
     unpaidInvoices: {
         id: number;

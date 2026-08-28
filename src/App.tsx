@@ -7,10 +7,7 @@ import TransactionPage from '@/pages/TransactionPage';
 import ImportTransactionsPage from '@/pages/ImportTransactionsPage';
 import CompanyPage from '@/pages/CompanyPage';
 import CustomerPage from '@/pages/CustomerPage';
-import ReceiptPage from '@/pages/ReceiptPage';
-import TreasuryPage from '@/pages/TreasuryPage';
 import AuditLogsPage from '@/pages/AuditLogsPage';
-import OutstandingPage from '@/pages/OutstandingPage';
 import ExchangeRateCalendarPage from '@/pages/ExchangeRateCalendarPage';
 import UsersPage from '@/pages/admin/UsersPage';
 import CurrenciesPage from '@/pages/admin/CurrenciesPage';
@@ -106,30 +103,6 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CustomerPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/company/:companyId/outstanding"
-          element={
-            <ProtectedRoute>
-              <OutstandingPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/company/:companyId/receipts"
-          element={
-            <ProtectedRoute>
-              <ReceiptPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/company/:companyId/treasury"
-          element={
-            <ProtectedRoute>
-              <TreasuryPage />
             </ProtectedRoute>
           }
         />

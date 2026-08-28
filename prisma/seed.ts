@@ -179,8 +179,6 @@ async function main() {
                     thbAmount: thbAmount,
                     rateDate: date,
                     rateSource: 'BOT',
-                    paymentStatus: 'PENDING',
-                    paidThb: 0,
                     invoices: {
                         create: [{
                             companyId: company.id,

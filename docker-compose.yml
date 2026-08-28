@@ -1,25 +1,25 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: currency-db
+    container_name: customs-converter-db
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: currency_user
-      POSTGRES_PASSWORD: currency_pass_2024
-      POSTGRES_DB: currency_db
+      POSTGRES_USER: customs_converter_user
+      POSTGRES_PASSWORD: customs_converter_pass
+      POSTGRES_DB: customs_converter_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U currency_user -d currency_db"]
+      test: ["CMD-SHELL", "pg_isready -U customs_converter_user -d customs_converter_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   app:
     build: .
-    container_name: currency-app
+    container_name: customs-converter-app
     restart: unless-stopped
     ports:
       - "4501:3000"
@@ -27,7 +27,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://currency_user:currency_pass_2024@db:5432/currency_db
+      DATABASE_URL: postgresql://customs_converter_user:customs_converter_pass@db:5432/customs_converter_db
       BOT_API_KEY: ${BOT_API_KEY}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: http://localhost:3000
