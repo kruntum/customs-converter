@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
   Loader2,
   CalendarDays,
   Hash,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -102,7 +103,10 @@ export function TransactionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-5xl md:max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border">
+      <DialogContent 
+        className="w-[96vw] !max-w-[1200px] h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden shadow-2xl rounded-2xl border-border"
+        style={{ maxWidth: '1200px', width: '96vw' }}
+      >
         {/* Fixed Header */}
         <DialogHeader className="p-4 sm:p-5 pb-3 sm:pb-4 border-b bg-muted/30 shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
@@ -175,16 +179,16 @@ export function TransactionDetailDialog({
 
         {/* Scrollable Content Body with Defined Height matching TransactionDialog */}
         {loading ? (
-          <div className="h-[calc(90vh-130px)] flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <div className="h-[calc(92vh-130px)] flex flex-col items-center justify-center py-24 text-muted-foreground">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
             <p className="text-sm font-medium">กำลังโหลดรายละเอียดใบขนสินค้า...</p>
           </div>
         ) : !transaction ? (
-          <div className="h-[calc(90vh-130px)] flex items-center justify-center py-24 text-muted-foreground text-sm">
+          <div className="h-[calc(92vh-130px)] flex items-center justify-center py-24 text-muted-foreground text-sm">
             ไม่พบข้อมูลรายการ
           </div>
         ) : (
-          <ScrollArea className="h-[calc(90vh-130px)] w-full">
+          <ScrollArea className="h-[calc(92vh-130px)] w-full">
             <div className="p-4 sm:p-6 space-y-6">
               {/* Metadata Cards Grid (1 col on mobile, 2 cols on tablet, 4 cols on desktop) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
@@ -307,8 +311,8 @@ export function TransactionDetailDialog({
 
                         {/* Mobile Swipe Hint */}
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:hidden px-3.5 py-1.5 bg-muted/20 border-t">
-                          <MoveHorizontal className="h-3.5 w-3.5 text-primary" />
-                          <span>ปัดหรือเลื่อนซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</span>
+                          <ArrowLeftRight className="h-3.5 w-3.5 text-primary animate-pulse" />
+                          <span>เลื่อนซ้าย-ขวาเพื่อดูคอลัมน์ทั้งหมด</span>
                         </div>
 
                         {/* Direct Horizontal Scroll Container for Items Table */}
