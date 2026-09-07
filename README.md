@@ -180,25 +180,78 @@ docker compose -f docker-compose.prod.yml exec app node prisma/seed-exchange-rat
 
 ---
 
-### 3. 🛠️ คำสั่งที่ใช้บ่อยในการดูแลระบบ (Maintenance)
+### 3. 🛠️ รวมคำสั่งที่ใช้บ่อยในการดูแลระบบบน Debian (Debian & Docker Maintenance)
+
+#### 📦 3.1 การจัดการ Service และ Container Lifecycle
 ```bash
-# ดู Log การทำงาน
-docker compose -f docker-compose.prod.yml logs -f
+# ตรวจสอบสถานะการทำงานของทุก Service
+docker compose -f docker-compose.prod.yml ps
 
-# ดูเฉพาะ Log ของ Nginx Proxy
-docker compose -f docker-compose.prod.yml logs -f proxy
+# ดู Log รวมทั้งหมดแบบ Realtime (กด Ctrl+C เพื่อออก)
+docker compose -f docker-compose.prod.yml logs -f --tail=100
 
-# ดูเฉพาะ Log ของ App Backend
-docker compose -f docker-compose.prod.yml logs -f app
+# ดู Log แยกราย Service
+docker compose -f docker-compose.prod.yml logs -f app       # ดูเฉพาะ Backend/Frontend
+docker compose -f docker-compose.prod.yml logs -f proxy     # ดูเฉพาะ Nginx Reverse Proxy
+docker compose -f docker-compose.prod.yml logs -f db        # ดูเฉพาะ PostgreSQL
 
-# Restart ทุก Service
-docker compose -f docker-compose.prod.yml restart
+# Restart ทุก Service หรือเลือกเฉพาะ Service
+docker compose -f docker-compose.prod.yml restart           # restart ทั้งหมด
+docker compose -f docker-compose.prod.yml restart app       # restart เฉพาะแอป
+docker compose -f docker-compose.prod.yml restart proxy     # reload proxy
 
-# ปิดระบบทั้งหมด
+# สั่งหยุดและปิดระบบทั้งหมด
 docker compose -f docker-compose.prod.yml down
+```
 
-# สำรองข้อมูลฐานข้อมูล (Backup Database)
-docker compose -f docker-compose.prod.yml exec db pg_dump -U customs_converter_user customs_converter_db > backup_$(date +%Y%m%d_%H%M%S).sql
+#### 🔄 3.2 ขั้นตอนการอัปเดตเวอร์ชันใหม่ (Update Code & Redeploy)
+เมื่อมีการแก้ไขโค้ดและ Push ขึ้น GitHub แล้ว ให้ดึงโค้ดและ Rebuild ที่ Debian ได้ทันที:
+```bash
+# 1. ดึงโค้ดล่าสุดจาก GitHub
+git pull origin main
+
+# 2. สั่ง Rebuild และรันใหม่แบบ Zero-downtime
+docker compose -f docker-compose.prod.yml up -d --build
+```
+*(คำสั่งนี้จะทำการ Compile โค้ดใหม่และรัน DB Migration ให้อัตโนมัติโดยไม่ทำให้ข้อมูลใน Database สูญหาย)*
+
+#### 💾 3.3 การสำรองและกู้คืนฐานข้อมูล (Database Backup & Restore)
+```bash
+# 1. สำรองข้อมูล (Backup) บันทึกเป็นไฟล์ .sql พร้อมระบุวันที่เวลา
+docker compose -f docker-compose.prod.yml exec -T db pg_dump -U customs_converter_user customs_converter_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 2. กู้คืนข้อมูล (Restore) จากไฟล์ Backup
+cat backup_YYYYMMDD_HHMMSS.sql | docker compose -f docker-compose.prod.yml exec -T db psql -U customs_converter_user -d customs_converter_db
+
+# 3. เข้าสู่ PostgreSQL Terminal โดยตรง (psql shell)
+docker compose -f docker-compose.prod.yml exec db psql -U customs_converter_user -d customs_converter_db
+```
+
+#### 📊 3.4 การตรวจสอบทรัพยากรและ Network บน Debian (System Monitoring)
+```bash
+# ตรวจสอบการใช้งาน CPU / Memory ของแต่ละคอนเทนเนอร์แบบ Realtime
+docker stats
+
+# ตรวจสอบพื้นที่ว่างของฮาร์ดดิสก์บนเซิร์ฟเวอร์
+df -h
+
+# ตรวจสอบการใช้งาน RAM ของระบบ Debian
+free -h
+
+# ตรวจสอบว่าพอร์ต 5009 กำลัง Listen อยู่หรือไม่
+sudo ss -tulpn | grep 5009
+
+# ทำความสะอาด Image/Container เก่าที่ไม่ได้ใช้งานเพื่อคืนพื้นที่ดิสก์
+docker system prune -f
+```
+
+#### ⚡ 3.5 คำสั่งจัดการภายใน Container (Shell & Tools)
+```bash
+# เข้าไปในคอนเทนเนอร์ app เพื่อรันคำสั่งเชลล์ภายใน
+docker compose -f docker-compose.prod.yml exec app sh
+
+# สั่งรันซิงค์เรท ธปท. ย้อนหลัง 1 ปีใหม่แบบ Manual
+docker compose -f docker-compose.prod.yml exec app node prisma/seed-exchange-rates.js
 ```
 
 ---
