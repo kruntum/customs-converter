@@ -4,9 +4,13 @@ export interface InvoiceItem {
     id?: number;
     itemNo: number;
     goodsName: string;
+    quantity?: string | number;
     netWeight: string;
     price: string;
     priceTHB: string;
+    fobPrice?: string | number;
+    freight?: string | number;
+    insurance?: string | number;
     totalPrice: string;
     totalPriceTHB: string;
 }
@@ -32,6 +36,7 @@ export interface Transaction {
     thbAmount: string;
     rateDate: string;
     rateSource: string;
+    type: 'IMPORT' | 'EXPORT';
     createdBy: string;
     companyId: number | null;
     customerId: number | null;
@@ -60,6 +65,9 @@ interface TransactionState {
     companyId: number | null;
     filterCurrency: string;
     filterCustomerId: string;
+    filterType: string;
+    filterDateType: 'createdAt' | 'declarationDate';
+    filterDate: string;
     filterYear: string;
     filterMonth: string;
 
@@ -68,6 +76,9 @@ interface TransactionState {
     setCompanyId: (companyId: number | null) => void;
     setFilterCurrency: (currency: string) => void;
     setFilterCustomerId: (customerId: string) => void;
+    setFilterType: (type: string) => void;
+    setFilterDateType: (dateType: 'createdAt' | 'declarationDate') => void;
+    setFilterDate: (date: string) => void;
     setFilterYear: (year: string) => void;
     setFilterMonth: (month: string) => void;
     fetchTransactions: (page?: number) => Promise<void>;
@@ -86,6 +97,9 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     companyId: null,
     filterCurrency: '',
     filterCustomerId: '',
+    filterType: '',
+    filterDateType: 'createdAt',
+    filterDate: '',
     filterYear: '',
     filterMonth: '',
 
@@ -94,18 +108,24 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     setCompanyId: (companyId) => set({ companyId }),
     setFilterCurrency: (currency) => set({ filterCurrency: currency }),
     setFilterCustomerId: (customerId) => set({ filterCustomerId: customerId }),
+    setFilterType: (type) => set({ filterType: type }),
+    setFilterDateType: (dateType) => set({ filterDateType: dateType }),
+    setFilterDate: (date) => set({ filterDate: date }),
     setFilterYear: (year) => set({ filterYear: year }),
     setFilterMonth: (month) => set({ filterMonth: month }),
 
     fetchTransactions: async (page = 1) => {
         set({ loading: true, error: null });
         try {
-            const { searchQuery, pagination, companyId, filterCurrency, filterCustomerId, filterYear, filterMonth } = get();
+            const { searchQuery, pagination, companyId, filterCurrency, filterCustomerId, filterType, filterDateType, filterDate, filterYear, filterMonth } = get();
             const params = new URLSearchParams({ page: String(page), limit: String(pagination.limit) });
             if (searchQuery) params.set('search', searchQuery);
             if (companyId) params.set('companyId', String(companyId));
             if (filterCurrency) params.set('currencyCode', filterCurrency);
             if (filterCustomerId) params.set('customerId', filterCustomerId);
+            if (filterType && filterType !== 'ALL') params.set('type', filterType);
+            if (filterDateType) params.set('dateType', filterDateType);
+            if (filterDate) params.set('date', filterDate);
             if (filterYear) params.set('year', filterYear);
             if (filterMonth) params.set('month', filterMonth);
 

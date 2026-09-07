@@ -30,6 +30,7 @@ import { format } from 'date-fns';
 import { formatNumber } from '@/lib/utils';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { EmptyState } from '@/components/ui/empty-state';
+import { DatePicker } from '@/components/ui/date-picker';
 import { CurrencyBadge } from '@/components/currency-badge';
 
 export default function TransactionPage() {
@@ -39,7 +40,9 @@ export default function TransactionPage() {
     setSearchQuery, setCompanyId, setLimit, fetchTransactions, deleteTransaction,
     filterCurrency, filterCustomerId,
     setFilterCurrency, setFilterCustomerId,
-    filterYear, filterMonth, setFilterYear, setFilterMonth,
+    filterYear, filterMonth, setFilterYear, setFilterMonth, filterType, setFilterType,
+    filterDate, setFilterDate,
+    filterDateType, setFilterDateType,
   } = useTransactionStore();
 
   const { customers, fetchCustomers } = useCustomerStore();
@@ -231,8 +234,22 @@ export default function TransactionPage() {
           {/* Filter row */}
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            
+            {/* Type Filter */}
+            <Select value={filterType || 'all'} onValueChange={(v) => { setFilterType(v === 'all' ? '' : v); fetchTransactions(1); }}>
+              <SelectTrigger className="w-[130px] h-8 text-xs font-sans">
+                <SelectValue placeholder="ประเภททั้งหมด" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ประเภททั้งหมด</SelectItem>
+                <SelectItem value="IMPORT">ขาเข้า (IMPORT)</SelectItem>
+                <SelectItem value="EXPORT">ขาออก (EXPORT)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Customer Filter */}
             <Select value={filterCustomerId} onValueChange={(v) => { setFilterCustomerId(v === 'all' ? '' : v); fetchTransactions(1); }}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectTrigger className="w-[180px] h-8 text-xs font-sans">
                 <SelectValue placeholder="ลูกค้าทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -242,8 +259,10 @@ export default function TransactionPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Currency Filter */}
             <Select value={filterCurrency} onValueChange={(v) => { setFilterCurrency(v === 'all' ? '' : v); fetchTransactions(1); }}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectTrigger className="w-[150px] h-8 text-xs font-sans">
                 <SelectValue placeholder="สกุลเงินทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -253,9 +272,40 @@ export default function TransactionPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Date Type + Date Filter */}
+            <div className="flex items-center gap-1.5 bg-background border rounded-md px-1 py-0.5">
+              <Select value={filterDateType} onValueChange={(v: 'createdAt' | 'declarationDate') => { setFilterDateType(v); fetchTransactions(1); }}>
+                <SelectTrigger className="w-[145px] h-7 text-xs border-0 shadow-none focus:ring-0 font-sans">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt" className="text-xs">📅 วันที่นำเข้า (Import)</SelectItem>
+                  <SelectItem value="declarationDate" className="text-xs">📄 วันส่งศุลกากร (Customs)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="w-[130px]">
+                <DatePicker
+                  value={filterDate}
+                  onChange={(val) => { 
+                    setFilterDate(val); 
+                    if (val) {
+                      setFilterYear('');
+                      setFilterMonth('');
+                    }
+                    fetchTransactions(1); 
+                  }}
+                  placeholder="เลือกวันที่..."
+                  inputClassName="h-7 text-xs bg-muted/40 font-sans border-0"
+                  buttonClassName="h-7 w-7"
+                />
+              </div>
+            </div>
+
+            {/* Year Filter */}
             <Popover open={yearOpen} onOpenChange={setYearOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[110px] h-8 text-xs justify-between font-normal">
+                <Button variant="outline" role="combobox" aria-expanded={yearOpen} className="w-[100px] h-8 text-xs justify-between font-normal font-sans">
                   {filterYear || 'ปีทั้งหมด'}
                   <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
                 </Button>
@@ -271,7 +321,12 @@ export default function TransactionPage() {
                         ปีทั้งหมด
                       </CommandItem>
                       {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map((y) => (
-                        <CommandItem key={y} value={String(y)} onSelect={() => { setFilterYear(String(y)); setYearOpen(false); fetchTransactions(1); }} className="text-xs">
+                        <CommandItem key={y} value={String(y)} onSelect={() => { 
+                          setFilterYear(String(y)); 
+                          setFilterDate(''); // Clear specific date to allow year filter
+                          setYearOpen(false); 
+                          fetchTransactions(1); 
+                        }} className="text-xs">
                           <Check className={`mr-1 h-3 w-3 ${filterYear === String(y) ? 'opacity-100' : 'opacity-0'}`} />
                           {y}
                         </CommandItem>
@@ -281,8 +336,14 @@ export default function TransactionPage() {
                 </Command>
               </PopoverContent>
             </Popover>
-            <Select value={filterMonth} onValueChange={(v) => { setFilterMonth(v === 'all' ? '' : v); fetchTransactions(1); }}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
+
+            {/* Month Filter */}
+            <Select value={filterMonth} onValueChange={(v) => { 
+              setFilterMonth(v === 'all' ? '' : v); 
+              setFilterDate(''); // Clear specific date to allow month filter
+              fetchTransactions(1); 
+            }}>
+              <SelectTrigger className="w-[110px] h-8 text-xs font-sans">
                 <SelectValue placeholder="เดือนทั้งหมด" />
               </SelectTrigger>
               <SelectContent>
@@ -292,8 +353,9 @@ export default function TransactionPage() {
                 ))}
               </SelectContent>
             </Select>
-            {(filterCustomerId || filterCurrency || filterYear || filterMonth) && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => { setFilterCustomerId(''); setFilterCurrency(''); setFilterYear(''); setFilterMonth(''); fetchTransactions(1); }}>
+
+            {(filterCustomerId || filterCurrency || filterType || filterDate || filterYear || filterMonth) && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground font-sans" onClick={() => { setFilterCustomerId(''); setFilterCurrency(''); setFilterType(''); setFilterDate(''); setFilterDateType('createdAt'); setFilterYear(''); setFilterMonth(''); fetchTransactions(1); }}>
                 ล้างตัวกรอง
               </Button>
             )}
@@ -345,7 +407,14 @@ export default function TransactionPage() {
                           <TableCell className="text-center text-muted-foreground text-xs py-1">
                             {(pagination.page - 1) * pagination.limit + index + 1}
                           </TableCell>
-                          <TableCell className="font-medium text-xs py-1">{tx.declarationNumber}</TableCell>
+                          <TableCell className="font-medium text-xs py-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={tx.type === "EXPORT" ? "success" : "default"} className="text-[10px] px-1.5 py-0 font-normal">
+                                {tx.type === "EXPORT" ? "ขาออก" : "ขาเข้า"}
+                              </Badge>
+                              {tx.declarationNumber}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-xs py-1">{formatDate(tx.declarationDate)}</TableCell>
                           <TableCell className="text-center py-1">
                             <Badge variant="secondary">{tx._count?.invoices ?? 0}</Badge>
@@ -440,26 +509,62 @@ export default function TransactionPage() {
                                               <div className="pl-[50px] pr-4 py-2 border-l-2 border-primary/20 bg-muted/5 my-1">
                                                 <Table className="bg-card border border-muted-foreground/10 rounded-sm">
                                                   <TableHeader>
-                                                    <TableRow className="hover:bg-transparent">
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px] w-[30px] text-center">#</TableHead>
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px]">ชื่อสินค้า</TableHead>
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px] text-right">น้ำหนัก</TableHead>
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ราคา</TableHead>
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ราคารวม ({tx.currencyCode})</TableHead>
-                                                      <TableHead className="h-6 py-0 px-2 text-[10px] text-right">รวม THB</TableHead>
-                                                    </TableRow>
+                                                    {tx.type === 'IMPORT' ? (
+                                                      <TableRow className="hover:bg-transparent">
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] w-[30px] text-center">#</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px]">ชื่อสินค้า</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">จำนวน</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">นน. (NW)</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ค่าระวาง ({tx.currencyCode})</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ค่าประกัน ({tx.currencyCode})</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ราคาสินค้า ({tx.currencyCode})</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right font-bold text-foreground">รวม CIF ({tx.currencyCode})</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right font-bold text-primary">รวม CIF (THB)</TableHead>
+                                                      </TableRow>
+                                                    ) : (
+                                                      <TableRow className="hover:bg-transparent">
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] w-[30px] text-center">#</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px]">ชื่อสินค้า</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">นน. สุทธิ</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ราคาต่อหน่วย</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right">ราคารวม ({tx.currencyCode})</TableHead>
+                                                        <TableHead className="h-6 py-0 px-2 text-[10px] text-right font-bold text-primary">รวม FOB (THB)</TableHead>
+                                                      </TableRow>
+                                                    )}
                                                   </TableHeader>
                                                   <TableBody>
-                                                    {inv.items.map((item, idx) => (
-                                                      <TableRow key={item.id} className="hover:bg-muted/20">
-                                                        <TableCell className="py-1.5 px-2 text-[10px] text-muted-foreground text-center">{idx + 1}</TableCell>
-                                                        <TableCell className="py-1.5 px-2 text-[11px] font-medium">{item.goodsName}</TableCell>
-                                                        <TableCell className="py-1.5 px-2 text-[11px] text-right text-muted-foreground">{item.netWeight ? formatNumber(item.netWeight, 3) : '-'}</TableCell>
-                                                        <TableCell className="py-1.5 px-2 text-[11px] text-right">{formatNumber(item.price, 4)}</TableCell>
-                                                        <TableCell className="py-1.5 px-2 text-[11px] text-right">{formatNumber(item.totalPrice, 4)}</TableCell>
-                                                        <TableCell className="py-1.5 px-2 text-[11px] text-right text-primary/80">฿{formatNumber(item.totalPriceTHB)}</TableCell>
-                                                      </TableRow>
-                                                    ))}
+                                                    {tx.type === 'IMPORT' ? (
+                                                      inv.items.map((item, idx) => {
+                                                        const baseGoods = Number(item.fobPrice) > 0 ? Number(item.fobPrice) : (Number(item.totalPrice) || 0);
+                                                        const freightFcy = Number(item.freight) || 0;
+                                                        const insFcy = Number(item.insurance) || 0;
+                                                        const cifFcy = baseGoods + freightFcy + insFcy;
+                                                        return (
+                                                          <TableRow key={item.id || idx} className="hover:bg-muted/20">
+                                                            <TableCell className="py-1.5 px-2 text-[10px] text-muted-foreground text-center">{item.itemNo || idx + 1}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] font-medium">{item.goodsName}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right">{item.quantity ? formatNumber(item.quantity, 0) : '1'}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right text-muted-foreground">{item.netWeight ? formatNumber(item.netWeight, 2) : '-'}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right text-muted-foreground">{freightFcy > 0 ? formatNumber(freightFcy, 2) : '0.00'}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right text-muted-foreground">{insFcy > 0 ? formatNumber(insFcy, 2) : '0.00'}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right font-medium">{formatNumber(baseGoods, 4)}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right font-bold text-foreground">{formatNumber(cifFcy, 4)}</TableCell>
+                                                            <TableCell className="py-1.5 px-2 text-[11px] text-right font-bold text-primary">฿{formatNumber(item.totalPriceTHB, 2)}</TableCell>
+                                                          </TableRow>
+                                                        );
+                                                      })
+                                                    ) : (
+                                                      inv.items.map((item, idx) => (
+                                                        <TableRow key={item.id || idx} className="hover:bg-muted/20">
+                                                          <TableCell className="py-1.5 px-2 text-[10px] text-muted-foreground text-center">{item.itemNo || idx + 1}</TableCell>
+                                                          <TableCell className="py-1.5 px-2 text-[11px] font-medium">{item.goodsName}</TableCell>
+                                                          <TableCell className="py-1.5 px-2 text-[11px] text-right text-muted-foreground">{item.netWeight ? formatNumber(item.netWeight, 3) : '-'}</TableCell>
+                                                          <TableCell className="py-1.5 px-2 text-[11px] text-right">{formatNumber(item.price, 4)}</TableCell>
+                                                          <TableCell className="py-1.5 px-2 text-[11px] text-right font-medium">{formatNumber(item.totalPrice, 4)}</TableCell>
+                                                          <TableCell className="py-1.5 px-2 text-[11px] text-right font-bold text-primary">฿{formatNumber(item.totalPriceTHB, 2)}</TableCell>
+                                                        </TableRow>
+                                                      ))
+                                                    )}
                                                   </TableBody>
                                                 </Table>
                                               </div>

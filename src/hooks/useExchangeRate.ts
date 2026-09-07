@@ -4,6 +4,7 @@ interface ExchangeRateData {
     currencyId: string;
     period: string;
     buyingTransfer: string;
+    selling: string | null;
     source: string;
 }
 
@@ -19,6 +20,7 @@ export function useExchangeRate() {
                     currencyId: 'THB',
                     period: date,
                     buyingTransfer: '1.000000',
+                    selling: '1.000000',
                     source: 'SYSTEM',
                 });
             }
@@ -29,7 +31,7 @@ export function useExchangeRate() {
         setError(null);
 
         try {
-            const res = await fetch(`/api/rates/${currency}/${date}`, {
+            const res = await fetch(`/api/rates/bot-fallback/${currency}/${date}`, {
                 credentials: 'include',
             });
             const json = await res.json();

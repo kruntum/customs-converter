@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRole } from '@/hooks/use-role';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -271,7 +271,7 @@ export default function DashboardPage() {
                             </div>
                           </TableCell>
                           <TableCell className="px-4 py-1.5 text-right">
-                            <div className="font-mono font-medium">{formatNumber(inv.pendingFcy, 2)} <span className="text-[10px] text-muted-foreground">{inv.currencyCode}</span></div>
+                            <div className="font-medium">{formatNumber(inv.pendingFcy, 2)} <span className="text-[10px] text-muted-foreground">{inv.currencyCode}</span></div>
                             <div className="text-[10px] text-orange-600 dark:text-orange-400 mt-0.5">~฿{formatNumber(inv.estimatedThbValue)}</div>
                           </TableCell>
                           <TableCell className="px-4 py-1.5 text-right">

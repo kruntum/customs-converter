@@ -10,6 +10,9 @@ import { prisma } from '../db.js';
 export function requireCompanyRole(allowedRoles: string[]) {
     return async (c: Context<AppEnv>, next: Next) => {
         const user = c.get('user');
+        if (!user) {
+            return c.json({ error: 'Unauthorized: Authentication required' }, 401);
+        }
 
         const companyIdParam =
             c.req.param('companyId') ||

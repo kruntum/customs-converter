@@ -376,13 +376,13 @@ export default function TransactionFormPage() {
                         {inv.isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         อินวอย #{invIdx + 1}
                         {inv.invoiceNumber && (
-                          <Badge variant="outline" className="font-mono">{inv.invoiceNumber}</Badge>
+                          <Badge variant="outline">{inv.invoiceNumber}</Badge>
                         )}
                       </CardTitle>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span>{invoiceTotals[invIdx].itemCount} รายการ</span>
-                        <span className="font-mono">{currSymbol}{formatNumber(invoiceTotals[invIdx].totalForeign, 4)}</span>
-                        <span className="font-mono text-primary font-semibold">฿{formatNumber(invoiceTotals[invIdx].totalThb)}</span>
+                        <span>{currSymbol}{formatNumber(invoiceTotals[invIdx].totalForeign, 4)}</span>
+                        <span className="text-primary font-semibold">฿{formatNumber(invoiceTotals[invIdx].totalThb)}</span>
                         {invoices.length > 1 && (
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); removeInvoice(invIdx); }}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -436,16 +436,16 @@ export default function TransactionFormPage() {
                                   onChange={(e) => updateItem(invIdx, itemIdx, 'netWeight', e.target.value)} />
                               </td>
                               <td className="py-1.5 px-1">
-                                <Input className="h-8 text-sm text-right font-mono" type="number" step="0.01" placeholder="0.00"
+                                <Input className="h-8 text-sm text-right" type="number" step="0.01" placeholder="0.00"
                                   value={item.price}
                                   onChange={(e) => updateItem(invIdx, itemIdx, 'price', e.target.value)} />
                               </td>
                               <td className="py-1.5 px-1">
-                                <Input className="h-8 text-sm text-right font-mono" type="number" step="0.01" placeholder="0.00"
+                                <Input className="h-8 text-sm text-right" type="number" step="0.01" placeholder="0.00"
                                   value={item.totalPrice}
                                   onChange={(e) => updateItem(invIdx, itemIdx, 'totalPrice', e.target.value)} />
                               </td>
-                              <td className="py-1.5 px-3 text-right font-mono text-primary font-semibold">
+                              <td className="py-1.5 px-3 text-right text-primary font-semibold">
                                 ฿{formatNumber(calcItemThb(item.totalPrice || item.price))}
                               </td>
                               <td className="py-1.5 px-1 text-center">
@@ -488,10 +488,10 @@ export default function TransactionFormPage() {
       <div className="sticky bottom-0 bg-background border-t px-4 py-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-6 text-sm">
           <span className="text-muted-foreground">{invoices.length} อินวอย</span>
-          <span className="font-mono font-semibold">
+          <span className="font-semibold">
             {currSymbol}{formatNumber(grandTotalForeign, 4)} {currencyCode}
           </span>
-          <span className="font-mono font-bold text-primary text-lg">
+          <span className="font-bold text-primary text-lg">
             ฿{formatNumber(grandTotalThb)}
           </span>
         </div>

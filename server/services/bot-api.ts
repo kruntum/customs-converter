@@ -146,29 +146,34 @@ export async function fetchBotExchangeRateWithFallback(
     currency: string,
     submissionDateStr: string,
 ): Promise<ExchangeRateResult | null> {
-    // 1. Check local database first
-    try {
-        let targetDate = new Date(submissionDateStr);
-        if (isNaN(targetDate.getTime())) {
-            targetDate = new Date();
-        }
+    // Customs rate rule: Rate date MUST be T - 1 (the day before customs submission date),
+    // or the most recent prior working day if T - 1 has no rate (e.g. weekend/holiday).
+    let submissionDate = new Date(submissionDateStr);
+    if (isNaN(submissionDate.getTime())) {
+        submissionDate = new Date();
+    }
 
-        // Find the most recent rate on or before the targetDate
+    // T - 1 date (end of day to include any rates stored on that date)
+    const targetRateDate = subDays(submissionDate, 1);
+    targetRateDate.setUTCHours(23, 59, 59, 999);
+
+    // 1. Check local database first for the most recent rate on or before targetRateDate (T - 1)
+    try {
         const localRate = await prisma.exchangeRate.findFirst({
             where: {
                 currencyCode: currency,
-                rateDate: { lte: targetDate }
+                rateDate: { lte: targetRateDate }
             },
             orderBy: {
                 rateDate: 'desc'
             }
         });
 
-        // Verify if it is within a reasonable window (15 days lookback)
+        // Verify if it is within a 6-month window (180 days lookback for accounting historical entry)
         if (localRate) {
-            const diffTime = Math.abs(targetDate.getTime() - localRate.rateDate.getTime());
+            const diffTime = Math.abs(targetRateDate.getTime() - localRate.rateDate.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays <= 15) {
+            if (diffDays <= 180) {
                 return {
                     currencyId: localRate.currencyCode,
                     period: format(localRate.rateDate, 'yyyy-MM-dd'),
@@ -182,7 +187,7 @@ export async function fetchBotExchangeRateWithFallback(
         console.error('Error fetching exchange rate from local database:', dbError);
     }
 
-    // 2. Fetch from BOT API
+    // 2. Fetch from BOT API (query window from targetRateDate down to 180 days prior)
     const apiKey = process.env.BOT_API_KEY;
 
     if (!apiKey || apiKey === 'your_bot_api_key_here') {
@@ -191,14 +196,8 @@ export async function fetchBotExchangeRateWithFallback(
     }
 
     try {
-        let currentDate = new Date(submissionDateStr);
-        if (isNaN(currentDate.getTime())) {
-            currentDate = new Date();
-        }
-
-        // We want to check from (currentDate - 1 day) back to (currentDate - 15 days)
-        const endDate = subDays(currentDate, 1);
-        const startDate = subDays(currentDate, 15);
+        const endDate = targetRateDate;
+        const startDate = subDays(targetRateDate, 180);
 
         const startDateStr = format(startDate, 'yyyy-MM-dd');
         const endDateStr = format(endDate, 'yyyy-MM-dd');
@@ -244,51 +243,33 @@ export async function fetchBotExchangeRateWithFallback(
             source: 'BOT',
         };
 
-        // Cache the retrieved rate in the local database
+        // Cache all retrieved daily rates in the local database so future imports for this period hit LOCAL_DB
         try {
-            await prisma.exchangeRate.upsert({
-                where: {
-                    currencyCode_rateDate: {
-                        currencyCode: currency,
-                        rateDate: new Date(mostRecent.period)
-                    }
-                },
-                update: {
-                    buyingTransfer: mostRecent.buying_transfer,
-                    selling: mostRecent.selling || null,
-                },
-                create: {
-                    currencyCode: currency,
-                    rateDate: new Date(mostRecent.period),
-                    buyingTransfer: mostRecent.buying_transfer,
-                    selling: mostRecent.selling || null,
-                }
-            });
-
-            // Also write cache entry for the *requested* date if different (e.g. weekend falling back to Friday)
-            const requestedDateOnlyStr = submissionDateStr.split('T')[0];
-            if (requestedDateOnlyStr !== mostRecent.period) {
-                await prisma.exchangeRate.upsert({
-                    where: {
-                        currencyCode_rateDate: {
+            for (const item of validRates) {
+                const itemDate = new Date(item.period);
+                if (!isNaN(itemDate.getTime()) && item.buying_transfer) {
+                    await prisma.exchangeRate.upsert({
+                        where: {
+                            currencyCode_rateDate: {
+                                currencyCode: currency,
+                                rateDate: itemDate
+                            }
+                        },
+                        update: {
+                            buyingTransfer: item.buying_transfer,
+                            selling: item.selling || null,
+                        },
+                        create: {
                             currencyCode: currency,
-                            rateDate: new Date(requestedDateOnlyStr)
+                            rateDate: itemDate,
+                            buyingTransfer: item.buying_transfer,
+                            selling: item.selling || null,
                         }
-                    },
-                    update: {
-                        buyingTransfer: mostRecent.buying_transfer,
-                        selling: mostRecent.selling || null,
-                    },
-                    create: {
-                        currencyCode: currency,
-                        rateDate: new Date(requestedDateOnlyStr),
-                        buyingTransfer: mostRecent.buying_transfer,
-                        selling: mostRecent.selling || null,
-                    }
-                });
+                    });
+                }
             }
         } catch (cacheError) {
-            console.error('Failed to cache exchange rate in database:', cacheError);
+            console.error('Failed to cache exchange rates in database:', cacheError);
         }
 
         return rateResult;

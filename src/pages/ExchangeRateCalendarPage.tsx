@@ -311,7 +311,7 @@ export default function ExchangeRateCalendarPage() {
                                                         <TableCell className="text-center text-muted-foreground text-xs py-1">
                                                             {rowNum}
                                                         </TableCell>
-                                                        <TableCell className="font-mono tabular-nums text-xs py-1">
+                                                        <TableCell className="tabular-nums text-xs py-1">
                                                             {format(new Date(r.rateDate), 'd MMM yyyy', { locale: th })}
                                                         </TableCell>
                                                         <TableCell className="py-1">
@@ -322,10 +322,10 @@ export default function ExchangeRateCalendarPage() {
                                                                 {r.currencyCode}
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono tabular-nums font-medium text-xs py-1">
+                                                        <TableCell className="text-right tabular-nums font-medium text-xs py-1">
                                                             {parseFloat(r.buyingTransfer).toFixed(4)}
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono tabular-nums font-medium text-xs py-1">
+                                                        <TableCell className="text-right tabular-nums font-medium text-xs py-1">
                                                             {r.selling ? parseFloat(r.selling).toFixed(4) : <span className="text-muted-foreground">—</span>}
                                                         </TableCell>
                                                         <TableCell className="text-right text-muted-foreground text-xs py-1">

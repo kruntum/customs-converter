@@ -92,26 +92,35 @@
 
 ## 🌐 Production Deployment & Exchange Rate Sync Setup (การติดตั้งบน Production & อัตราแลกเปลี่ยน)
 
-เมื่อนำโปรเจกต์นี้ขึ้นไปติดตั้งบนระบบจริง (Production) ภายใต้ **Docker** ระบบถูกออกแบบมาให้บริหารจัดการส่วนต่าง ๆ ได้ง่ายดังนี้:
+เมื่อนำโปรเจกต์นี้ขึ้นไปติดตั้งบนระบบจริง (Production) ภายใต้ **Docker** ระบบถูกออกแบบมาให้มี Reverse Proxy (Nginx) ฝังในตัว พร้อมสำหรับการเชื่อมต่อผ่าน **Pangolin** หรือ Tunnel/Proxy อื่นๆ:
 
-### 1. ขั้นตอนการ Deploy และการอัปเดต Database
+### 1. โครงสร้าง Services ใน Production (`docker-compose.prod.yml`)
+- **`proxy` (Nginx):** ทำหน้าที่เป็นทางเข้าหลัก Listen ที่พอร์ต `5009` (หรือตามค่า `${APP_PORT}`) เพื่อรับทราฟฟิกจาก **Pangolin** (`https://cal.tummy.cc`) และส่งต่อไปยังแอป พร้อมทั้งส่งต่อ Headers สำหรับ Better Auth (`Host`, `X-Forwarded-Proto`, `X-Forwarded-For`) และขยายขนาดรับไฟล์ Excel สูงสุดถึง 50MB
+- **`app` (Node.js/Hono):** รันแอปพลิเคชันและให้บริการ API อยู่ภายใน Docker Network (พอร์ต 3000)
+- **`db` (PostgreSQL 17):** ฐานข้อมูลหลักพร้อม Healthcheck
+
+### 2. ขั้นตอนการ Deploy
 1. **กำหนดค่า Environment Variables (`.env`):**
-   ตรวจสอบว่าได้ระบุ `BOT_API_KEY` ในไฟล์ `.env` ที่ใช้รัน Docker-compose:
+   คัดลอกไฟล์ `.env.prod.example` ไปเป็น `.env` และกำหนดค่า:
    ```env
-   BOT_API_KEY="คีย์_Authorization_ของธนาคารแห่งประเทศไทยที่ได้รับจากการสมัครสมาชิก"
+   APP_PORT=5009
+   BETTER_AUTH_URL="https://cal.tummy.cc"
+   ALLOWED_ORIGINS="https://cal.tummy.cc,http://10.10.10.254:5009"
+   BOT_API_KEY="คีย์_Authorization_ของธนาคารแห่งประเทศไทย"
    ```
 2. **การรัน Migration (ทำงานอัตโนมัติ):**
-   คุณ **ไม่จำเป็น** ต้องเข้าไปรันคำสั่ง Migration ใน Database ด้วยตัวเอง เนื่องจากคำสั่งสตาร์ทของคอนเทนเนอร์ `app` ใน `docker-compose.prod.yml` ถูกกำหนดให้รันคำสั่ง `npx prisma migrate deploy` โดยอัตโนมัติทุกครั้งเมื่อมีการ Boot คอนเทนเนอร์ขึ้นมาใหม่:
-   ```yaml
-   command: sh -c "npx prisma migrate deploy && node server-dist/index.js"
-   ```
-3. **การนำโค้ดขึ้นระบบ:**
-   เพียงสั่ง Build และรัน Docker Container ตามปกติ:
+   คอนเทนเนอร์ `app` ใน `docker-compose.prod.yml` ถูกกำหนดให้รันคำสั่ง `npx prisma migrate deploy` โดยอัตโนมัติทุกครั้งเมื่อ Boot ขึ้นมา
+3. **การสั่งรัน Container:**
    ```bash
    docker compose -f docker-compose.prod.yml up -d --build
    ```
+4. **การตั้งค่า Pangolin:**
+   ในหน้าคอนฟิกของ Pangolin ให้ชี้ Target/Upstream ไปที่:
+   ```
+   http://10.10.10.254:5009
+   ```
 
-### 📅 2. การดึงข้อมูลอัตราแลกเปลี่ยนย้อนหลัง 1 ปี (Historical Seeding)
+### 📅 3. การดึงข้อมูลอัตราแลกเปลี่ยนย้อนหลัง 1 ปี (Historical Seeding)
 เพื่อความสะดวกในการเริ่มระบบครั้งแรกและมีข้อมูลย้อนหลังแสดงบนหน้าเว็บทันทีโดยไม่ต้องรอระบบซิงค์ของแต่ละวัน ให้คุณรันสคริปต์ย้อนหลัง 1 ปี (365 วัน) **ผ่านคอนเทนเนอร์ที่กำลังทำงานอยู่** ด้วยคำสั่งนี้:
 
 * **คำสั่งสำหรับการรันย้อนหลังภายใต้ Docker:**

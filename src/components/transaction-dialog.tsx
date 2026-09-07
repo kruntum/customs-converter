@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Loader2, Save, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { formatNumber, calculateTransactionTotals } from '@/lib/utils';
 import { useCompanyStore } from '@/stores/company-store';
 
@@ -38,7 +38,7 @@ const today = format(new Date(), 'yyyy-MM-dd');
 
 export function TransactionDialog({ open, onOpenChange, companyId, editId, onSaved }: TransactionDialogProps) {
   const { createTransaction, updateTransaction, fetchTransaction } = useTransactionStore();
-  const { rate, loading: rateLoading, fetchRate } = useExchangeRate();
+  const { rate, loading: rateLoading, fetchRate, clearRate } = useExchangeRate();
   const { fetchCustomers } = useCustomerStore();
   const { companies, fetchCompanies } = useCompanyStore();
   const activeCompany = companies.find((c) => c.id === companyId);
@@ -53,6 +53,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
   const isEdit = !!editId;
 
   const [declarationNumber, setDeclarationNumber] = useState('');
+  const [type, setType] = useState('IMPORT');
   const [declarationDate, setDeclarationDate] = useState(today);
   const [customerId, setCustomerId] = useState<string>('none');
   const [currencyCode, setCurrencyCode] = useState('CNY');
@@ -71,22 +72,25 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
   const rateNum = parseFloat(exchangeRate) || 0;
   const currSymbol = currencies.find(c => c.code === currencyCode)?.symbol || '';
 
-  // Reset form when dialog opens
+  // Reset form when dialog opens for NEW transaction
   useEffect(() => {
     if (open && !editId) {
+      clearRate();
       setDeclarationNumber('');
+      setType('IMPORT');
       setDeclarationDate(today);
       setCustomerId('none');
       setCurrencyCode('CNY');
       setExchangeRate('');
-      setRateDate(today);
+      const t1 = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+      setRateDate(t1);
       setRateSource('BOT');
       setNotes('');
       setInvoices([{ invoiceNumber: '', invoiceDate: today, items: [{ ...emptyItem }], isOpen: true }]);
     }
-  }, [open, editId]);
+  }, [open, editId, clearRate]);
 
-  // Fetch currencies
+  // Fetch currencies and customers
   useEffect(() => {
     if (open) {
       fetch('/api/currencies', { credentials: 'include' })
@@ -104,15 +108,17 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
   useEffect(() => {
     if (open && editId) {
       setLoadingData(true);
+      clearRate();
       fetchTransaction(editId)
         .then((tx) => {
           setDeclarationNumber(tx.declarationNumber);
+          setType(tx.type || 'IMPORT');
           setDeclarationDate(tx.declarationDate.split('T')[0]);
           setCustomerId(tx.customerId ? String(tx.customerId) : 'none');
           setCurrencyCode(tx.currencyCode);
           setExchangeRate(tx.exchangeRate);
           setRateDate(tx.rateDate.split('T')[0]);
-          setRateSource(tx.rateSource);
+          setRateSource(tx.rateSource || 'BOT');
           setNotes(tx.notes || '');
           if (tx.invoices && tx.invoices.length > 0) {
             setInvoices(tx.invoices.map((inv) => ({
@@ -131,26 +137,44 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
         .catch((err) => toast.error(err.message))
         .finally(() => setLoadingData(false));
     }
-  }, [open, editId, fetchTransaction]);
+  }, [open, editId, fetchTransaction, clearRate]);
 
-  // Auto-fetch exchange rate
+  // Auto-fetch exchange rate ONLY on new transaction creation
   useEffect(() => {
-    if (open && currencyCode && rateDate && !isTHB) {
-      fetchRate(currencyCode, rateDate);
+    if (open && !isEdit && currencyCode && declarationDate && !isTHB) {
+      fetchRate(currencyCode, declarationDate);
     }
     if (isTHB) {
       setExchangeRate('1');
       setRateSource('THB');
     }
-  }, [open, currencyCode, rateDate, isTHB, fetchRate]);
+  }, [open, isEdit, currencyCode, declarationDate, isTHB, fetchRate]);
 
-  // Apply fetched rate
+  // Apply fetched rate from fetchRate action
   useEffect(() => {
-    if (rate && !isTHB) {
-      setExchangeRate(rate.buyingTransfer);
-      setRateSource(rate.source);
+    if (rate && !isTHB && rate.buyingTransfer) {
+      setExchangeRate(type === 'IMPORT' ? (rate.selling || rate.buyingTransfer) : rate.buyingTransfer);
+      setRateSource(rate.source || 'BOT');
+      if (rate.period) {
+        setRateDate(rate.period);
+      }
     }
-  }, [rate, isTHB]);
+  }, [rate, isTHB, type]);
+
+  const handleDeclarationDateChange = (val: string) => {
+    setDeclarationDate(val);
+  };
+
+  const handleCurrencyChange = (val: string) => {
+    setCurrencyCode(val);
+  };
+
+  const handleRateDateChange = (val: string) => {
+    setRateDate(val);
+    if (currencyCode && !isTHB && val) {
+      fetchRate(currencyCode, val);
+    }
+  };
 
   // Invoice helpers
   const addInvoice = () => {
@@ -200,7 +224,8 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
   const { grandTotalForeign, grandTotalThb } = calculateTransactionTotals(
     invoices,
     rateNum,
-    roundingMethod
+    roundingMethod,
+    type
   );
 
   // Submit
@@ -219,14 +244,21 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
     setSaving(true);
     try {
       const payload = {
+        type,
         declarationNumber, declarationDate, currencyCode, exchangeRate, rateDate, rateSource,
         companyId, notes,
         customerId: customerId !== 'none' ? parseInt(customerId) : undefined,
         invoices: invoices.map(inv => ({
           invoiceNumber: inv.invoiceNumber, invoiceDate: inv.invoiceDate,
           items: inv.items.map(item => ({
-            goodsName: item.goodsName, netWeight: item.netWeight || undefined,
-            price: item.price, totalPrice: item.totalPrice || item.price,
+            goodsName: item.goodsName,
+            quantity: item.quantity ? parseFloat(item.quantity) : 1,
+            netWeight: item.netWeight || undefined,
+            price: item.price,
+            fobPrice: item.fobPrice ? parseFloat(item.fobPrice) : undefined,
+            freight: item.freight ? parseFloat(item.freight) : undefined,
+            insurance: item.insurance ? parseFloat(item.insurance) : undefined,
+            totalPrice: item.totalPrice || item.price,
           })),
         })),
       };
@@ -271,7 +303,19 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
               <div className="space-y-3 px-4 py-3">
                 {/* Transaction Header */}
               <div className="space-y-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                      <Label className="text-xs">ประเภทใบขน *</Label>
+                      <Select value={type} onValueChange={(val) => setType(val)}>
+                        <SelectTrigger className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus:ring-warning/50">
+                          <SelectValue placeholder="เลือกประเภท" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IMPORT">ขาเข้า (Import)</SelectItem>
+                          <SelectItem value="EXPORT">ขาออก (Export)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   <div>
                     <Label className="text-xs">เลขที่ใบขนสินค้า *</Label>
                     <Input className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" placeholder="DEC-2026-001" value={declarationNumber}
@@ -281,7 +325,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                     <Label className="text-xs">วันที่ใบขนสินค้า *</Label>
                     <DatePicker 
                       value={declarationDate} 
-                      onChange={setDeclarationDate} 
+                      onChange={handleDeclarationDateChange} 
                       className="w-full"
                       inputClassName="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" 
                       buttonClassName="h-7 w-7 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
@@ -300,7 +344,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs">สกุลเงิน *</Label>
-                    <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                    <Select value={currencyCode} onValueChange={handleCurrencyChange}>
                       <SelectTrigger className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus:ring-warning/50"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {currencies.map(c => (
@@ -318,8 +362,15 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                         <div className="flex gap-1">
                           <Input className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" type="number" step="0.000001" value={exchangeRate}
                             onChange={(e) => { setExchangeRate(e.target.value); setRateSource('MANUAL'); }} />
-                          <Badge variant={rateSource === 'BOT' ? 'success' : 'warning'} className="shrink-0 self-center text-xs">
-                            {rateSource}
+                          <Badge 
+                            variant={rateSource === 'LOCAL_DB' ? 'outline' : rateSource === 'BOT' ? 'secondary' : 'default'} 
+                            className={`shrink-0 self-center text-xs px-2 h-7 font-sans ${
+                              rateSource === 'LOCAL_DB' 
+                                ? 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' 
+                                : ''
+                            }`}
+                          >
+                            {rateSource === 'LOCAL_DB' ? 'LOCAL_DB' : rateSource}
                           </Badge>
                         </div>
                       </div>
@@ -327,7 +378,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                         <Label className="text-xs">วันที่อัตราแลกเปลี่ยน</Label>
                         <DatePicker 
                           value={rateDate} 
-                          onChange={setRateDate} 
+                          onChange={handleRateDateChange} 
                           className="w-full"
                           inputClassName="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" 
                           buttonClassName="h-7 w-7 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
@@ -355,11 +406,9 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
 
               {/* Invoices */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     อินวอย <Badge variant="secondary" className="text-xs">{invoices.length}</Badge>
-                  </p>
-                </div>
+                  </div>
 
                 {invoices.map((inv, idx) => (
                   <InvoiceCard
@@ -369,6 +418,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                     currencyCode={currencyCode}
                     currencySymbol={currSymbol}
                     exchangeRate={rateNum}
+                    type={type}
                     roundingMethod={roundingMethod}
                     canDelete={invoices.length > 1}
                     onUpdate={(field, value) => updateInvoice(idx, field, value)}

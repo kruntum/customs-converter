@@ -233,7 +233,7 @@ export default function CompanyPage() {
                       <TableRow key={company.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="text-muted-foreground text-xs py-1.5 h-10">{index + 1}</TableCell>
                         <TableCell className="font-medium text-sm py-1.5 h-10">{company.name}</TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground py-1.5 h-10">
+                        <TableCell className="text-xs text-muted-foreground py-1.5 h-10">
                           {company.taxId || '-'}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground py-1.5 h-10" title={company.address || ''}>

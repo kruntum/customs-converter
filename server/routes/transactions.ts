@@ -11,8 +11,12 @@ const transactionRoutes = new Hono<AppEnv>();
 // Zod schemas
 const invoiceItemSchema = z.object({
     goodsName: z.string().min(1),
+    quantity: z.union([z.number(), z.string()]).optional().nullable(),
     netWeight: z.string().optional().nullable(),
     price: z.string().min(1),
+    fobPrice: z.union([z.number(), z.string()]).optional().nullable(),
+    freight: z.union([z.number(), z.string()]).optional().nullable(),
+    insurance: z.union([z.number(), z.string()]).optional().nullable(),
     totalPrice: z.string().min(1),
     itemNo: z.number().optional().nullable(),
 });
@@ -30,6 +34,7 @@ const transactionSchema = z.object({
     exchangeRate: z.string().min(1),
     rateDate: z.string().min(1),
     rateSource: z.enum(['BOT', 'MANUAL', 'THB', 'LOCAL_DB']).default('BOT'),
+    type: z.enum(['IMPORT', 'EXPORT']).default('IMPORT'),
     // companyId is intentionally excluded — always sourced from middleware
     customerId: z.number().optional().nullable(),
     notes: z.string().optional().nullable(),
@@ -50,8 +55,15 @@ transactionRoutes.get('/', async (c) => {
 
     const currencyCode = c.req.query('currencyCode');
     const customerId = c.req.query('customerId');
+    const type = c.req.query('type');
+    const dateType = c.req.query('dateType') || 'createdAt';
+    const date = c.req.query('date');
+    const startDate = c.req.query('startDate');
+    const endDate = c.req.query('endDate');
     const year = c.req.query('year');
     const month = c.req.query('month');
+
+    const targetDateField = dateType === 'declarationDate' ? 'declarationDate' : 'createdAt';
 
     const where: Record<string, unknown> = { companyId };
     if (search) {
@@ -67,17 +79,37 @@ transactionRoutes.get('/', async (c) => {
     if (customerId) {
         where.customerId = parseInt(customerId);
     }
-    if (year || month) {
+    if (type && type !== 'ALL') {
+        where.type = type;
+    }
+    if (date) {
+        const d = new Date(date);
+        if (!isNaN(d.getTime())) {
+            const start = new Date(d);
+            start.setUTCHours(0, 0, 0, 0);
+            const end = new Date(d);
+            end.setUTCHours(23, 59, 59, 999);
+            where[targetDateField] = { gte: start, lte: end };
+        }
+    } else if (startDate || endDate) {
+        where[targetDateField] = {};
+        if (startDate) (where[targetDateField] as any).gte = new Date(startDate);
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setUTCHours(23, 59, 59, 999);
+            (where[targetDateField] as any).lte = end;
+        }
+    } else if (year || month) {
         const y = year ? parseInt(year) : new Date().getFullYear();
         if (month) {
             const m = parseInt(month);
             const start = new Date(Date.UTC(y, m - 1, 1));
             const end = new Date(Date.UTC(y, m, 1));
-            where.declarationDate = { gte: start, lt: end };
+            where[targetDateField] = { gte: start, lt: end };
         } else {
             const start = new Date(Date.UTC(y, 0, 1));
             const end = new Date(Date.UTC(y + 1, 0, 1));
-            where.declarationDate = { gte: start, lt: end };
+            where[targetDateField] = { gte: start, lt: end };
         }
     }
 
@@ -162,8 +194,12 @@ transactionRoutes.post('/', async (c) => {
         invoiceDate: new Date(inv.invoiceDate),
         items: inv.items.map((item) => ({
             goodsName: item.goodsName,
+            quantity: item.quantity ? parseFloat(String(item.quantity)) : 1,
             netWeight: item.netWeight ? parseFloat(item.netWeight) : null,
             price: parseFloat(item.price),
+            fobPrice: item.fobPrice ? parseFloat(String(item.fobPrice)) : 0,
+            freight: item.freight ? parseFloat(String(item.freight)) : 0,
+            insurance: item.insurance ? parseFloat(String(item.insurance)) : 0,
             totalPrice: parseFloat(item.totalPrice),
             itemNo: item.itemNo,
         })),
@@ -176,6 +212,7 @@ transactionRoutes.post('/', async (c) => {
         companyId,
         userId: user.id,
         roundingMethod,
+        type: data.type || 'IMPORT',
     });
 
     const totalForeign = calculated.grandTotalForeign;
@@ -194,6 +231,7 @@ transactionRoutes.post('/', async (c) => {
             thbAmount: totalThb,
             rateDate: new Date(data.rateDate),
             rateSource: data.rateSource,
+            type: data.type,
             companyId,
             customerId: data.customerId || null,
             createdBy: user.id,
@@ -211,9 +249,13 @@ transactionRoutes.post('/', async (c) => {
                         create: inv.items.map((it, idx) => ({
                             itemNo: it.itemNo ?? (idx + 1),
                             goodsName: it.goodsName,
+                            quantity: it.quantity ?? 1,
                             netWeight: it.netWeight,
                             price: it.price,
                             priceTHB: it.priceTHB,
+                            fobPrice: it.fobPrice ?? 0,
+                            freight: it.freight ?? 0,
+                            insurance: it.insurance ?? 0,
                             totalPrice: it.totalPrice,
                             totalPriceTHB: it.totalPriceTHB,
                         })),
@@ -358,6 +400,8 @@ transactionRoutes.post('/confirm-import', async (c) => {
             duplicateAction: 'skip' | 'overwrite';
             exchangeRate: string;
             rateDate: string;
+            rateSource?: string;
+            type?: string;
         }>;
     };
 
@@ -377,7 +421,7 @@ transactionRoutes.post('/confirm-import', async (c) => {
             let overwriteCount = 0;
 
             for (const item of items) {
-                const { transaction: txn, customerId, duplicateAction, exchangeRate, rateDate } = item;
+                const { transaction: txn, customerId, duplicateAction, exchangeRate, rateDate, rateSource, type } = item;
                 const declNo = txn.declarationNumber;
 
                 // Check duplicate state in database
@@ -433,9 +477,13 @@ transactionRoutes.post('/confirm-import', async (c) => {
                     invoiceDate: new Date(inv.invoiceDate),
                     items: inv.items.map((it: any) => ({
                         goodsName: it.goodsName,
-                        netWeight: it.netWeight ? parseFloat(it.netWeight) : null,
-                        price: parseFloat(it.price) || 0,
-                        totalPrice: parseFloat(it.totalPrice) || 0,
+                        quantity: it.quantity ? parseFloat(String(it.quantity)) : 1,
+                        netWeight: it.netWeight ? parseFloat(String(it.netWeight)) : null,
+                        price: parseFloat(String(it.price)) || 0,
+                        fobPrice: it.fobPrice ? parseFloat(String(it.fobPrice)) : 0,
+                        freight: it.freight ? parseFloat(String(it.freight)) : 0,
+                        insurance: it.insurance ? parseFloat(String(it.insurance)) : 0,
+                        totalPrice: parseFloat(String(it.totalPrice)) || 0,
                         itemNo: it.itemNo
                     }))
                 }));
@@ -448,11 +496,32 @@ transactionRoutes.post('/confirm-import', async (c) => {
                     companyId,
                     userId: user.id,
                     roundingMethod,
+                    type: 'IMPORT',
                 });
 
                 const totalForeign = calculated.grandTotalForeign;
                 const totalThb = calculated.grandTotalThb;
                 const invoicesData = calculated.invoices;
+
+                // Resolve customer: if not provided, fallback to or create "ลูกค้าทั่วไป" (General Customer)
+                let resolvedCustomerId = customerId || null;
+                if (!resolvedCustomerId) {
+                    let defaultCustomer = await tx.customer.findFirst({
+                        where: { companyId, name: 'ลูกค้าทั่วไป', isDeleted: false },
+                        select: { id: true }
+                    });
+                    if (!defaultCustomer) {
+                        defaultCustomer = await tx.customer.create({
+                            data: {
+                                companyId,
+                                name: 'ลูกค้าทั่วไป',
+                                createdBy: user.id
+                            },
+                            select: { id: true }
+                        });
+                    }
+                    resolvedCustomerId = defaultCustomer.id;
+                }
 
                 const createdTx = await tx.transaction.create({
                     data: {
@@ -465,9 +534,10 @@ transactionRoutes.post('/confirm-import', async (c) => {
                         exchangeRate: rate,
                         thbAmount: totalThb,
                         rateDate: new Date(rateDate),
-                        rateSource: 'BOT',
+                        rateSource: rateSource || 'BOT',
+                        type: type || 'IMPORT',
                         companyId,
-                        customerId: customerId || null,
+                        customerId: resolvedCustomerId,
                         createdBy: user.id,
                         notes: txn.notes || null,
                         invoices: {
@@ -483,9 +553,13 @@ transactionRoutes.post('/confirm-import', async (c) => {
                                     create: inv.items.map((it, idx) => ({
                                         itemNo: it.itemNo ?? (idx + 1),
                                         goodsName: it.goodsName,
+                                        quantity: it.quantity ?? 1,
                                         netWeight: it.netWeight,
                                         price: it.price,
                                         priceTHB: it.priceTHB,
+                                        fobPrice: it.fobPrice ?? 0,
+                                        freight: it.freight ?? 0,
+                                        insurance: it.insurance ?? 0,
                                         totalPrice: it.totalPrice,
                                         totalPriceTHB: it.totalPriceTHB,
                                         productId: existingProductsMap.get(it.goodsName)?.id || null
@@ -561,8 +635,12 @@ transactionRoutes.put('/:id', async (c) => {
         invoiceDate: new Date(inv.invoiceDate),
         items: inv.items.map((item) => ({
             goodsName: item.goodsName,
+            quantity: item.quantity ? parseFloat(String(item.quantity)) : 1,
             netWeight: item.netWeight ? parseFloat(item.netWeight) : null,
             price: parseFloat(item.price),
+            fobPrice: item.fobPrice ? parseFloat(String(item.fobPrice)) : 0,
+            freight: item.freight ? parseFloat(String(item.freight)) : 0,
+            insurance: item.insurance ? parseFloat(String(item.insurance)) : 0,
             totalPrice: parseFloat(item.totalPrice),
             itemNo: item.itemNo,
         })),
@@ -575,6 +653,7 @@ transactionRoutes.put('/:id', async (c) => {
         companyId,
         userId: user.id,
         roundingMethod,
+        type: data.type || 'IMPORT',
     });
 
     const totalForeign = calculated.grandTotalForeign;
@@ -598,6 +677,7 @@ transactionRoutes.put('/:id', async (c) => {
                 thbAmount: totalThb,
                 rateDate: new Date(data.rateDate),
                 rateSource: data.rateSource,
+                type: data.type,
                 notes: data.notes || null,
                 customerId: data.customerId || null,
                 invoices: {
@@ -613,9 +693,13 @@ transactionRoutes.put('/:id', async (c) => {
                             create: inv.items.map((it, idx) => ({
                                 itemNo: it.itemNo ?? (idx + 1),
                                 goodsName: it.goodsName,
+                                quantity: it.quantity ?? 1,
                                 netWeight: it.netWeight,
                                 price: it.price,
                                 priceTHB: it.priceTHB,
+                                fobPrice: it.fobPrice ?? 0,
+                                freight: it.freight ?? 0,
+                                insurance: it.insurance ?? 0,
                                 totalPrice: it.totalPrice,
                                 totalPriceTHB: it.totalPriceTHB,
                             })),
@@ -679,6 +763,21 @@ transactionRoutes.delete('/:id', async (c) => {
             await tx.invoice.deleteMany({ where: { transactionId: id } });
         }
         await tx.transaction.delete({ where: { id } });
+    });
+
+    const user = c.get('user');
+    await logAuditData({
+        companyId,
+        userId: user.id,
+        action: 'DELETE_TRANSACTION',
+        entity: 'TRANSACTION',
+        entityId: String(id),
+        oldValues: {
+            declarationNumber: existing.declarationNumber,
+            foreignAmount: existing.foreignAmount,
+            exchangeRate: existing.exchangeRate,
+            thbAmount: existing.thbAmount
+        }
     });
 
     return c.json({ success: true });

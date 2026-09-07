@@ -98,6 +98,12 @@ companyRoutes.post('/', async (c) => {
                     userId: user.id,
                     role: 'OWNER'
                 }
+            },
+            customers: {
+                create: {
+                    name: 'ลูกค้าทั่วไป',
+                    createdBy: user.id
+                }
             }
         },
         include: {

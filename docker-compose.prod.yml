@@ -24,8 +24,8 @@ services:
       dockerfile: Dockerfile
     container_name: customs-converter-app-prod
     restart: unless-stopped
-    ports:
-      - "4501:3000"
+    expose:
+      - "3000"
     depends_on:
       db:
         condition: service_healthy
@@ -33,11 +33,22 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-customs_converter_user}:${DB_PASSWORD}@db:5432/${DB_NAME:-customs_converter_db}
       BOT_API_KEY: ${BOT_API_KEY}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://currency.tummy.cc}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://cal.tummy.cc}
       NODE_ENV: production
       PORT: 3000
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://currency.tummy.cc}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://cal.tummy.cc}
     command: sh -c "npx prisma migrate deploy && node server-dist/index.js"
+
+  proxy:
+    image: nginx:alpine
+    container_name: customs-converter-proxy-prod
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-5009}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
 
 volumes:
   postgres_prod_data:

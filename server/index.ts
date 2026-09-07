@@ -12,6 +12,7 @@ import exchangeRateRoutes from './routes/exchange-rates';
 import productRoutes from './routes/products';
 import userRoutes from './routes/users';
 import customerRoutes from './routes/customers';
+import excelTemplateRoutes from './routes/excel-templates';
 import auditLogRoutes from './routes/audit-logs';
 import dashboardRoutes from './routes/dashboard';
 import exchangeRateAdminRoutes from './routes/exchange-rate-admin.js';
@@ -20,18 +21,26 @@ import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
 
-const baseOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+const baseOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:5009',
+    'http://10.10.10.254:5009',
+    'https://cal.tummy.cc',
+];
 const envOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/+$/, ''))
     : [];
 const allowedOrigins = Array.from(new Set([...baseOrigins, ...envOrigins]));
 
-// CORS — Only explicitly allowed origins. Set NGROK_ORIGIN=https://abc.ngrok-free.app in .env for tunneling.
+// CORS — Only explicitly allowed origins.
 app.use('/api/*', cors({
     origin: (origin) => {
-        if (!origin) return 'http://localhost:5173'; // server-to-server
-        if (allowedOrigins.includes(origin)) return origin;
-        return 'http://localhost:5173'; // reject unknown origins silently
+        if (!origin) return allowedOrigins[0];
+        const normalized = origin.replace(/\/+$/, '');
+        if (allowedOrigins.includes(normalized)) return origin;
+        return allowedOrigins[0];
     },
     credentials: true,
 }));
@@ -42,31 +51,44 @@ app.on(['POST', 'GET'], '/api/auth/*', (c) => {
 });
 
 // Currencies (public GET + admin CRUD via /admin sub-routes)
+app.use('/api/currencies', authMiddleware);
 app.use('/api/currencies/*', authMiddleware);
 app.route('/api/currencies', currencyRoutes);
 
 // Protected routes
+app.use('/api/transactions', authMiddleware);
 app.use('/api/transactions/*', authMiddleware);
 app.route('/api/transactions', transactionRoutes);
 
+app.use('/api/companies', authMiddleware);
 app.use('/api/companies/*', authMiddleware);
 app.route('/api/companies', companyRoutes);
 
+app.use('/api/products', authMiddleware);
 app.use('/api/products/*', authMiddleware);
 app.route('/api/products', productRoutes);
 
+app.use('/api/rates', authMiddleware);
 app.use('/api/rates/*', authMiddleware);
 app.route('/api/rates', exchangeRateRoutes);
 
+app.use('/api/customers', authMiddleware);
 app.use('/api/customers/*', authMiddleware);
 app.route('/api/customers', customerRoutes);
 
+app.use('/api/excel-templates', authMiddleware);
+app.use('/api/excel-templates/*', authMiddleware);
+app.route('/api/excel-templates', excelTemplateRoutes);
+
+app.use('/api/audit-logs', authMiddleware);
 app.use('/api/audit-logs/*', authMiddleware);
 app.route('/api/audit-logs', auditLogRoutes);
 
+app.use('/api/dashboard', authMiddleware);
 app.use('/api/dashboard/*', authMiddleware);
 app.route('/api/dashboard', dashboardRoutes);
 
+app.use('/api/admin', authMiddleware, adminMiddleware);
 app.use('/api/admin/*', authMiddleware, adminMiddleware);
 app.route('/api/admin/users', userRoutes);
 app.route('/api/admin', exchangeRateAdminRoutes);

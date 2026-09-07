@@ -13,8 +13,12 @@ import { formatNumber, calculateInvoiceTotals } from '@/lib/utils';
 
 export interface FormItem {
   goodsName: string;
+  quantity?: string;
   netWeight: string;
   price: string;
+  fobPrice?: string;
+  freight?: string;
+  insurance?: string;
   totalPrice: string;
 }
 
@@ -25,7 +29,16 @@ export interface FormInvoice {
   isOpen: boolean;
 }
 
-export const emptyItem: FormItem = { goodsName: '', netWeight: '', price: '', totalPrice: '' };
+export const emptyItem: FormItem = {
+  goodsName: '',
+  quantity: '1',
+  netWeight: '',
+  price: '',
+  fobPrice: '',
+  freight: '',
+  insurance: '',
+  totalPrice: ''
+};
 
 interface InvoiceCardProps {
   invoice: FormInvoice;
@@ -33,6 +46,7 @@ interface InvoiceCardProps {
   currencyCode: string;
   currencySymbol: string;
   exchangeRate: number;
+  type?: string;
   roundingMethod?: string;
   canDelete: boolean;
   onUpdate: (field: keyof FormInvoice, value: string) => void;
@@ -44,15 +58,36 @@ interface InvoiceCardProps {
 }
 
 export function InvoiceCard({
-  invoice, index, currencyCode, currencySymbol, exchangeRate, roundingMethod = 'ITEM_ROUNDING',
+  invoice, index, currencyCode, currencySymbol, exchangeRate, type = 'IMPORT', roundingMethod = 'ITEM_ROUNDING',
   canDelete, onUpdate, onToggle, onRemove, onAddItem, onRemoveItem, onUpdateItem,
 }: InvoiceCardProps) {
-  const calcThb = useCallback((price: string) => {
-    return ((parseFloat(price) || 0) * exchangeRate).toFixed(2);
-  }, [exchangeRate]);
+  const calcThb = useCallback((item: FormItem) => {
+    const price = parseFloat(item.price) || 0;
+    const qty = parseFloat(item.quantity || '1') || 1;
+    const fob = item.fobPrice !== undefined && item.fobPrice !== '' ? parseFloat(item.fobPrice) : (parseFloat(item.totalPrice) || (price * qty));
+    const freight = item.freight ? parseFloat(item.freight) : 0;
+    const ins = item.insurance ? parseFloat(item.insurance) : 0;
+    const cif = type === 'IMPORT' ? (fob + freight + ins) : fob;
+    return (cif * exchangeRate).toFixed(2);
+  }, [exchangeRate, type]);
 
-  const { totalForeign, totalThb } = calculateInvoiceTotals(invoice.items, exchangeRate, roundingMethod);
+  const { totalForeign, totalThb } = calculateInvoiceTotals(invoice.items, exchangeRate, roundingMethod, type);
 
+  const isImport = type === 'IMPORT';
+
+  const handlePriceComponentChange = (itemIdx: number, field: 'fobPrice' | 'freight' | 'insurance', val: string) => {
+    onUpdateItem(itemIdx, field, val);
+    const item = invoice.items[itemIdx];
+    const fob = field === 'fobPrice' ? parseFloat(val) || 0 : (item.fobPrice ? parseFloat(item.fobPrice) || 0 : (parseFloat(item.totalPrice) || 0));
+    
+    if (field === 'fobPrice') {
+      onUpdateItem(itemIdx, 'totalPrice', val);
+      const qty = parseFloat(item.quantity || '1') || 1;
+      if (qty > 0) {
+        onUpdateItem(itemIdx, 'price', (fob / qty).toFixed(4));
+      }
+    }
+  };
 
   return (
     <div className="border rounded-lg bg-card">
@@ -106,18 +141,32 @@ export function InvoiceCard({
                 <thead className="bg-muted/50">
                   <tr className="border-b">
                     <th className="py-1.5 px-1 text-left w-[20px]">#</th>
-                    <th className="py-1.5 px-1 text-left w-[150px]">ชื่อสินค้า *</th>
-                    <th className="py-1.5 px-1 text-right w-[90px]">น้ำหนัก</th>
-                    <th className="py-1.5 px-1 text-right w-[100px]">ราคา ({currencyCode}) *</th>
-                    <th className="py-1.5 px-1 text-right w-[100px]">ราคารวม</th>
-                    <th className="py-1.5 px-1 text-right w-[100px]">THB</th>
-                    <th className="py-1.5 px-1 w-[32px]"></th>
+                    <th className="py-1.5 px-1 text-left min-w-[130px]">ชื่อสินค้า *</th>
+                    <th className="py-1.5 px-1 text-right w-[60px]">จำนวน</th>
+                    {isImport ? (
+                      <>
+                        <th className="py-1.5 px-1 text-right w-[65px]">นน. (NW)</th>
+                        <th className="py-1.5 px-1 text-right w-[75px]">ราคา/หน่วย</th>
+                        <th className="py-1.5 px-1 text-right w-[80px]">FOB</th>
+                        <th className="py-1.5 px-1 text-right w-[80px]">ค่าระวาง</th>
+                        <th className="py-1.5 px-1 text-right w-[80px]">ค่าประกัน</th>
+                        <th className="py-1.5 px-1 text-right w-[85px] text-primary font-bold">รวม ({currencyCode}) *</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="py-1.5 px-1 text-right w-[80px]">น้ำหนัก</th>
+                        <th className="py-1.5 px-1 text-right w-[90px]">ราคา/หน่วย *</th>
+                        <th className="py-1.5 px-1 text-right w-[90px] text-primary font-bold">รวม FOB ({currencyCode}) *</th>
+                      </>
+                    )}
+                    <th className="py-1.5 px-1 text-right w-[85px]">THB (CIF)</th>
+                    <th className="py-1.5 px-1 w-[28px]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.items.map((item, itemIdx) => (
                     <tr key={itemIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="py-1 px-2 text-muted-foreground">{itemIdx + 1}</td>
+                      <td className="py-1 px-1 text-center text-muted-foreground">{itemIdx + 1}</td>
                       <td className="py-1 px-1">
                         <ProductCombobox 
                           value={item.goodsName} 
@@ -126,19 +175,54 @@ export function InvoiceCard({
                         />
                       </td>
                       <td className="py-1 px-1">
-                        <Input className="h-7 text-right text-xs md:text-xs" type="number" placeholder="0.000" value={item.netWeight}
-                          onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
+                        <Input className="h-7 text-right text-xs md:text-xs" type="number" placeholder="1" value={item.quantity || ''}
+                          onChange={(e) => onUpdateItem(itemIdx, 'quantity', e.target.value)} />
                       </td>
-                      <td className="py-1 px-1">
-                        <Input className="h-7 text-right text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" type="number" step="0.01" placeholder="0.000"
-                          value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
-                      </td>
-                      <td className="py-1 px-1">
-                        <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.000"
-                          value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
-                      </td>
+                      {isImport ? (
+                        <>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.001" placeholder="0.00" value={item.netWeight || ''}
+                              onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.0001" placeholder="0.00"
+                              value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                              value={item.fobPrice || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'fobPrice', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                              value={item.freight || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'freight', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                              value={item.insurance || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'insurance', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 font-semibold" type="number" step="0.01" placeholder="0.00"
+                              value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs" type="number" placeholder="0.00" value={item.netWeight}
+                              onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" type="number" step="0.01" placeholder="0.00"
+                              value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
+                          </td>
+                          <td className="py-1 px-1">
+                            <Input className="h-7 text-right text-xs md:text-xs font-semibold" type="number" step="0.01" placeholder="0.00"
+                              value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
+                          </td>
+                        </>
+                      )}
                       <td className="py-1 px-1 text-right text-primary font-semibold text-xs">
-                        ฿{formatNumber(calcThb(item.totalPrice || item.price))}
+                        ฿{formatNumber(calcThb(item))}
                       </td>
                       <td className="py-1 px-1">
                         {invoice.items.length > 1 && (

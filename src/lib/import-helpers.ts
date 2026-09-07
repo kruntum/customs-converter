@@ -29,54 +29,95 @@ export function cleanTaxId(taxId: string | number | null | undefined): string {
     return String(taxId).replace(/\D/g, '');
 }
 
-export interface ExcelRow {
-    'reference no'?: string | number;
-    'Item'?: string | number;
-    'Invoice No'?: string | number;
-    'Inv. Item'?: string | number;
-    'Decl. No'?: string | number;
-    'Status'?: string;
-    '3'?: any;
-    '4'?: any;
-    'Invoice Date'?: string | number | Date;
-    'Exporter Name'?: string;
-    'Exporter Tax No'?: string | number;
-    'Export Branch'?: string | number;
-    'Vessel Name'?: string;
-    'Voy Number'?: string | number;
-    'MBL'?: string | number;
-    'HBL'?: string | number;
-    'Export Date'?: string | number | Date;
-    'Product Code'?: string | number;
-    'Brand Name'?: string;
-    'Product Description EN'?: string;
-    'Product Description TH'?: string;
-    'Purchase City'?: string;
-    'Tariff'?: string | number;
-    'Tariff Code'?: string | number;
-    'Tariff Seq.'?: string | number;
-    'Statistical Code'?: string | number;
-    'Net Weight'?: string | number;
-    'Weight Unit'?: string;
-    'Package'?: string | number;
-    'Package Unit'?: string;
-    'Quantity'?: string | number;
-    'Qty. Unit'?: string;
-    'Currency Code'?: string;
-    'Exchange Rate'?: string | number;
-    'Price'?: string | number;
-    'Price THB'?: string | number;
-    'FOB'?: string | number;
-    'FOB THB'?: string | number;
-    'Remark'?: string;
+export function parseSafeFloat(val: any, defaultVal = 0): number {
+    if (val === undefined || val === null) return defaultVal;
+    if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
+    const cleanStr = String(val).replace(/,/g, '').trim();
+    if (cleanStr === '' || cleanStr === '-') return defaultVal;
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? defaultVal : num;
 }
+
+export const FIELD_ALIASES: Record<string, string[]> = {
+    declarationNumber: [
+        'declarationnumber', 'declarationno', 'declno', 'decl no', 'declaration no',
+        'เลขที่ใบขน', 'เลขที่ใบขนสินค้า', 'ใบขน', 'ใบขนสินค้า', 'customsno', 'customsdeclarationno'
+    ],
+    invoiceNumber: [
+        'invoicenumber', 'invoiceno', 'invno', 'inv no', 'invoice no',
+        'เลขที่อินวอย', 'เลขที่ใบกำกับ', 'เลขที่ใบกำกับสินค้า', 'invoice'
+    ],
+    invoiceDate: [
+        'invoicedate', 'invdate', 'invoice date', 'inv date', 'export date',
+        'วันที่อินวอย', 'วันที่ใบกำกับ', 'วันที่ใบกำกับสินค้า', 'invoiced'
+    ],
+    exporterTaxNo: [
+        'exportertaxno', 'exportertaxid', 'taxid', 'taxno', 'importertaxno', 'importertaxid', 'consigneetaxno',
+        'exporter tax no', 'exporter tax id', 'importer tax no', 'importer tax id', 'consignee tax no',
+        'เลขผู้เสียภาษี', 'เลขประจำตัวผู้เสียภาษี', 'เลขผู้เสียภาษีผู้ส่งออก', 'เลขผู้เสียภาษีผู้นำเข้า',
+        'เลขประจำตัวผู้เสียภาษีอากร', 'เลขประจำตัวผู้เสียภาษีอากรผู้ส่งออก', 'เลขประจำตัวผู้เสียภาษีอากรผู้นำเข้า',
+        'tax id', 'tax no', 'exportertax', 'importertax', 'tax'
+    ],
+    exporterName: [
+        'exportername', 'exporter', 'importername', 'importer', 'consignee', 'exporter name', 'importer name',
+        'ผู้ส่งออก', 'ผู้นำเข้า', 'ชื่อผู้ส่งออก', 'ชื่อผู้นำเข้า', 'companyname', 'company'
+    ],
+    currencyCode: [
+        'currencycode', 'currency', 'cur', 'currency code', 'สกุลเงิน', 'รหัสสกุลเงิน', 'ccy'
+    ],
+    goodsNameTH: [
+        'goodsnameth', 'goodsnamethai', 'goodsname_th', 'product description th', 'description th',
+        'ชื่อสินค้า', 'ชื่อสินค้าไทย', 'ชื่อสินค้าภาษาไทย', 'รายการสินค้า', 'สินค้า'
+    ],
+    goodsNameEN: [
+        'goodsnameen', 'goodsnameeng', 'goodsname_en', 'product description en', 'description en',
+        'goodsname', 'description', 'goodsdescription', 'ชื่อสินค้าภาษาอังกฤษ'
+    ],
+    netWeight: [
+        'netweight', 'weight', 'net weight', 'น้ำหนัก', 'น้ำหนักสุทธิ', 'netwt', 'gw', 'nw'
+    ],
+    quantity: [
+        'quantity', 'qty', 'จำนวน', 'จำนวนสินค้า'
+    ],
+    price: [
+        'price', 'unitprice', 'unit price', 'ราคาต่อหน่วย', 'ราคา', 'fobunit', 'unitpricefob', 'cifunit', 'unitpricecif', 'ราคาcifต่อหน่วย'
+    ],
+    fobPrice: [
+        'fob', 'fobprice', 'totalfob', 'fob price', 'มูลค่าfob', 'ราคาสินค้า', 'มูลค่าสินค้า', 'invoicevalue', 'invoice value', 'invoicetotal', 'amount', 'total amount', 'amt', 'fcy amount', 'fcy', 'amount fcy', 'amount foreign'
+    ],
+    freight: [
+        'freight', 'freightamount', 'freight amount', 'fright', 'frightamount', 'fright amount', 'frightthb', 'freightthb', 'frightfcy', 'freightfcy', 'ค่าระวาง', 'ค่าขนส่ง', 'ค่าเฟรท', 'oceanfreight', 'airfreight', 'frt', 'frtamt', 'ค่าระวางเรือ', 'ค่าระวางต่างประเทศ'
+    ],
+    insurance: [
+        'insurance', 'insuranceamount', 'insurance amount', 'ins', 'insamount', 'insurancethb', 'insurancefcy', 'insthb', 'insfcy', 'insuarance', 'insuarance amount', 'insuarance thb', 'insuarancefcy', 'ค่าประกัน', 'ค่าประกันภัย', 'ค่าประกันต่างประเทศ', 'ค่าประกันบาท'
+    ],
+    totalPrice: [
+        'totalprice', 'totalfob', 'totalfobprice', 'total price', 'total cif', 'total amount', 'amount', 'amt', 'amount fcy', 'fcy amount', 'fob', 'fobthb', 'cif', 'cifthb', 'totalcif', 'totalcifprice',
+        'ราคารวม', 'ราคารวมสินค้า', 'ราคารวมfob', 'ราคารวมcif', 'ยอดรวม', 'ยอดรวมcif', 'cifprice', 'ราคาสินค้า', 'มูลค่าสินค้า'
+    ],
+    itemNo: [
+        'itemno', 'itemnumber', 'item no', 'item number', 'item', 'inv item', 'inv. item', 'ลำดับ', 'ลำดับรายการ', 'ลำดับสินค้า', 'ลำดับที่'
+    ],
+    status: [
+        'status', 'สถานะ', 'สถานะรายการ'
+    ],
+    notes: [
+        'notes', 'remark', 'remarks', 'note', 'reference no', 'referenceno', 'หมายเหตุ', 'อ้างอิง'
+    ],
+    term: [
+        'term', 'terms', 'incoterm', 'incoterms', 'deliveryterm', 'delivery term', 'termofdelivery', 'termofpayment', 'paymentterm', 'payment terms', 'เงื่อนไข', 'เทอม', 'เทอมการค้า', 'เงื่อนไขการส่งมอบ'
+    ],
+};
 
 export interface ImportItem {
     goodsName: string;
-    netWeight: number | null;
-    price: number; // Unit price
-    totalPrice: number; // FOB price
     quantity: number;
+    netWeight: number | null;
+    price: number; // Unit price FOB (or CIF unit)
+    fobPrice?: number;
+    freight?: number;
+    insurance?: number;
+    totalPrice: number; // Total CIF for import, FOB for export
     itemNo?: number | null;
 }
 
@@ -130,14 +171,32 @@ export function getRowValue(row: any, key: string | undefined): any {
     if (row[key] !== undefined) return row[key];
     
     // Case-insensitive / whitespace-insensitive lookup fallback
-    const normalizedKey = key.trim().toLowerCase();
+    const normalizedKey = key.trim().toLowerCase().replace(/[^a-z0-9ก-๙]/g, '');
     const rowKeys = Object.keys(row);
     for (const rk of rowKeys) {
-        if (rk.trim().toLowerCase() === normalizedKey) {
+        if (rk.trim().toLowerCase().replace(/[^a-z0-9ก-๙]/g, '') === normalizedKey) {
             return row[rk];
         }
     }
     return undefined;
+}
+
+export function findRowValue(row: any, fieldKey: string, mappedField?: string): any {
+    if (mappedField) {
+        const val = getRowValue(row, mappedField);
+        if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+    }
+    const aliases = FIELD_ALIASES[fieldKey] || [fieldKey];
+    for (const alias of aliases) {
+        const val = getRowValue(row, alias);
+        if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+    }
+    return undefined;
+}
+
+export function extractRowTaxId(row: any, mappedField?: string): string {
+    const raw = findRowValue(row, 'exporterTaxNo', mappedField);
+    return raw !== undefined && raw !== null ? String(raw).trim() : '';
 }
 
 export function groupExcelRows(
@@ -149,7 +208,7 @@ export function groupExcelRows(
 
     // 1. Filter out canceled rows (Status = 'C')
     const activeRows = rows.filter(row => {
-        const rawStatus = getRowValue(row, mapping?.status || 'Status');
+        const rawStatus = findRowValue(row, 'status', mapping?.status);
         const status = String(rawStatus || '').trim().toUpperCase();
         return status !== 'C';
     });
@@ -158,7 +217,7 @@ export function groupExcelRows(
     const baseInvMap = new Map<string, Array<{ row: any; revision: number }>>();
     
     activeRows.forEach(row => {
-        const rawInvNo = String(getRowValue(row, mapping?.invoiceNumber || 'Invoice No') || '').trim();
+        const rawInvNo = String(findRowValue(row, 'invoiceNumber', mapping?.invoiceNumber) || '').trim();
         if (!rawInvNo) return;
         const { base, revision } = parseInvoiceRevision(rawInvNo);
         
@@ -189,7 +248,7 @@ export function groupExcelRows(
     let lastInvDate = '';
 
     filteredRows.forEach((row) => {
-        let declNo = String(getRowValue(row, mapping?.declarationNumber || 'Decl. No') || '').trim();
+        let declNo = String(findRowValue(row, 'declarationNumber', mapping?.declarationNumber) || '').trim();
 
         // If declaration number is blank, inherit from previous row (forward-fill)
         if (!declNo && lastDeclNo) {
@@ -199,7 +258,7 @@ export function groupExcelRows(
         }
 
         // Clean invoice number
-        let rawInvNo = String(getRowValue(row, mapping?.invoiceNumber || 'Invoice No') || '').trim();
+        let rawInvNo = String(findRowValue(row, 'invoiceNumber', mapping?.invoiceNumber) || '').trim();
         if (!rawInvNo && lastInvNo && declNo === lastDeclNo) {
             rawInvNo = lastInvNo;
         } else if (rawInvNo) {
@@ -208,11 +267,8 @@ export function groupExcelRows(
         const cleanedInvNo = cleanInvoiceNumber(rawInvNo) || 'NO_INVOICE';
 
         // Parse dates
-        const declDate = ''; // Customs submission date should start empty; not mapped from Export/Invoice Date in Excel
-        const mappedInvDateKey = mapping?.invoiceDate;
-        const invDateRaw = mappedInvDateKey 
-            ? getRowValue(row, mappedInvDateKey) 
-            : (getRowValue(row, 'Invoice Date') || getRowValue(row, 'Export Date'));
+        const declDate = ''; // Customs submission date should start empty
+        const invDateRaw = findRowValue(row, 'invoiceDate', mapping?.invoiceDate);
         let invDate = parseExcelDate(invDateRaw);
         if (!invDate && lastInvDate && rawInvNo === lastInvNo) {
             invDate = lastInvDate;
@@ -220,15 +276,15 @@ export function groupExcelRows(
             lastInvDate = invDate;
         }
 
-        // Exporter details
-        let taxNo = cleanTaxId(getRowValue(row, mapping?.exporterTaxNo || 'Exporter Tax No'));
+        // Exporter / Importer details
+        let taxNo = cleanTaxId(findRowValue(row, 'exporterTaxNo', mapping?.exporterTaxNo));
         if (!taxNo && lastTaxNo && declNo === lastDeclNo) {
             taxNo = lastTaxNo;
         } else if (taxNo) {
             lastTaxNo = taxNo;
         }
 
-        let expName = String(getRowValue(row, mapping?.exporterName || 'Exporter Name') || '').trim();
+        let expName = String(findRowValue(row, 'exporterName', mapping?.exporterName) || '').trim();
         if (!expName && lastExpName && declNo === lastDeclNo) {
             expName = lastExpName;
         } else if (expName) {
@@ -236,7 +292,7 @@ export function groupExcelRows(
         }
 
         // Currency
-        let currency = String(getRowValue(row, mapping?.currencyCode || 'Currency Code') || '').trim().toUpperCase();
+        let currency = String(findRowValue(row, 'currencyCode', mapping?.currencyCode) || '').trim().toUpperCase();
         if (!currency && lastCurrency && declNo === lastDeclNo) {
             currency = lastCurrency;
         } else if (currency) {
@@ -246,15 +302,12 @@ export function groupExcelRows(
         }
 
         // Remark / reference no
-        const mappedNotesKey = mapping?.notes;
-        const notesRaw = mappedNotesKey
-            ? getRowValue(row, mappedNotesKey)
-            : (getRowValue(row, 'Remark') || getRowValue(row, 'reference no'));
+        const notesRaw = findRowValue(row, 'notes', mapping?.notes);
         const notes = String(notesRaw || '').trim();
 
         // Mapped goodsName
-        const descEN = String(getRowValue(row, mapping?.goodsNameEN || 'Product Description EN') || '').trim();
-        const descTH = String(getRowValue(row, mapping?.goodsNameTH || 'Product Description TH') || '').trim();
+        const descEN = String(findRowValue(row, 'goodsNameEN', mapping?.goodsNameEN) || '').trim();
+        const descTH = String(findRowValue(row, 'goodsNameTH', mapping?.goodsNameTH) || '').trim();
         
         let goodsName = '';
         if (productLang === 'EN') {
@@ -264,34 +317,64 @@ export function groupExcelRows(
         }
 
         // Weight
-        const netWeightRaw = getRowValue(row, mapping?.netWeight || 'Net Weight');
-        const netWeight = netWeightRaw ? parseFloat(String(netWeightRaw)) : null;
+        const netWeightRaw = findRowValue(row, 'netWeight', mapping?.netWeight);
+        const netWeight = netWeightRaw !== undefined && netWeightRaw !== null ? parseSafeFloat(netWeightRaw, 0) : null;
 
         // Quantity
-        const quantityRaw = getRowValue(row, mapping?.quantity || 'Quantity');
-        const quantity = quantityRaw ? parseFloat(String(quantityRaw)) : 0;
+        const quantityRaw = findRowValue(row, 'quantity', mapping?.quantity);
+        const quantity = parseSafeFloat(quantityRaw, 1);
 
-        // Pricing: Total price is FOB, Unit price is Price
-        const totalFobRaw = getRowValue(row, mapping?.totalPrice || 'FOB');
-        const totalFob = totalFobRaw ? parseFloat(String(totalFobRaw)) : 0;
-        const unitPriceRaw = getRowValue(row, mapping?.price || 'Price');
-        const unitPriceVal = unitPriceRaw ? parseFloat(String(unitPriceRaw)) : 0;
+        // Pricing: FOB, Freight, Insurance, CNF, CIF
+        const unitPriceRaw = findRowValue(row, 'price', mapping?.price);
+        const unitPriceVal = parseSafeFloat(unitPriceRaw, 0);
+
+        const fobRaw = findRowValue(row, 'fobPrice', mapping?.fobPrice);
+        const fobVal = parseSafeFloat(fobRaw, 0);
+
+        const freightRaw = findRowValue(row, 'freight', mapping?.freight);
+        const freightVal = parseSafeFloat(freightRaw, 0);
+
+        const insuranceRaw = findRowValue(row, 'insurance', mapping?.insurance);
+        const insuranceVal = parseSafeFloat(insuranceRaw, 0);
+
+        const cnfRaw = getRowValue(row, 'CNF') || getRowValue(row, 'CFR') || getRowValue(row, 'C&F') || getRowValue(row, 'CNF Price');
+        const cnfVal = parseSafeFloat(cnfRaw, 0);
+
+        const cifRaw = findRowValue(row, 'totalPrice', mapping?.totalPrice);
+        const cifVal = parseSafeFloat(cifRaw, 0);
+
+        let finalFob = fobVal;
+        const finalFreight = freightVal;
+        const finalInsurance = insuranceVal;
+        let finalTotalPrice = 0;
+
+        // Base goods price resolution (FOB / Base Invoice Value / Amount)
+        if (fobVal > 0) {
+            finalFob = fobVal;
+        } else if (cifVal > 0) {
+            finalFob = Math.max(0, cifVal - finalFreight - finalInsurance);
+        } else if (cnfVal > 0) {
+            finalFob = Math.max(0, cnfVal - finalFreight);
+        } else if (unitPriceVal > 0 && quantity > 0) {
+            finalFob = unitPriceVal * quantity;
+        } else if (unitPriceVal > 0 && netWeight && netWeight > 0) {
+            finalFob = unitPriceVal * netWeight;
+        }
 
         let finalUnitPrice = unitPriceVal;
-        let finalTotalPrice = totalFob;
-
-        if (finalTotalPrice === 0 && finalUnitPrice > 0) {
-            // Fallback total price
-            finalTotalPrice = finalUnitPrice * (quantity || 1);
+        if (finalUnitPrice === 0 && finalFob > 0) {
+            if (quantity > 0) {
+                finalUnitPrice = finalFob / quantity;
+            } else if (netWeight && netWeight > 0) {
+                finalUnitPrice = finalFob / netWeight;
+            }
         }
 
-        if (finalUnitPrice === 0 && finalTotalPrice > 0) {
-            // Fallback unit price
-            finalUnitPrice = quantity > 0 ? (finalTotalPrice / quantity) : finalTotalPrice;
-        }
+        // Base foreign total price without freight/insurance
+        finalTotalPrice = finalFob > 0 ? finalFob : (finalUnitPrice * (quantity || 1));
 
         // Item No
-        const itemNoRaw = getRowValue(row, mapping?.itemNo) || getRowValue(row, 'Item') || getRowValue(row, 'Inv. Item');
+        const itemNoRaw = findRowValue(row, 'itemNo', mapping?.itemNo);
         const itemNoVal = itemNoRaw ? parseInt(String(itemNoRaw), 10) : null;
         const finalItemNo = (itemNoVal && !isNaN(itemNoVal)) ? itemNoVal : null;
 
@@ -299,6 +382,9 @@ export function groupExcelRows(
             goodsName,
             netWeight: isNaN(netWeight as number) ? null : netWeight,
             price: finalUnitPrice,
+            fobPrice: finalFob,
+            freight: finalFreight,
+            insurance: finalInsurance,
             totalPrice: finalTotalPrice,
             quantity: quantity,
             itemNo: finalItemNo

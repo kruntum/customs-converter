@@ -141,7 +141,7 @@ export function ProductManagerDialog({ open, onOpenChange }: ProductManagerDialo
                 ) : (
                   filtered.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="text-center font-mono text-xs">{product.id}</TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">{product.id}</TableCell>
                       <TableCell className="font-medium text-sm">{product.name}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{product.user?.name || product.createdBy || 'System'}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{product.createdAt}</TableCell>
