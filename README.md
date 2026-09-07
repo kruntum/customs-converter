@@ -90,47 +90,116 @@
 
 ---
 
-## 🌐 Production Deployment & Exchange Rate Sync Setup (การติดตั้งบน Production & อัตราแลกเปลี่ยน)
+## 🌐 Production Deployment Guide (คู่มือการติดตั้งบน Production - Debian Linux)
 
-เมื่อนำโปรเจกต์นี้ขึ้นไปติดตั้งบนระบบจริง (Production) ภายใต้ **Docker** ระบบถูกออกแบบมาให้มี Reverse Proxy (Nginx) ฝังในตัว พร้อมสำหรับการเชื่อมต่อผ่าน **Pangolin** หรือ Tunnel/Proxy อื่นๆ:
+ระบบถูกออกแบบมาให้รันบน **Docker & Docker Compose** โดยมี Reverse Proxy (Nginx) ฝังในตัว พร้อมสำหรับการเชื่อมต่อผ่าน **Pangolin** หรือ Tunnel/Reverse Proxy อื่นๆ:
 
-### 1. โครงสร้าง Services ใน Production (`docker-compose.prod.yml`)
-- **`proxy` (Nginx):** ทำหน้าที่เป็นทางเข้าหลัก Listen ที่พอร์ต `5009` (หรือตามค่า `${APP_PORT}`) เพื่อรับทราฟฟิกจาก **Pangolin** (`https://cal.tummy.cc`) และส่งต่อไปยังแอป พร้อมทั้งส่งต่อ Headers สำหรับ Better Auth (`Host`, `X-Forwarded-Proto`, `X-Forwarded-For`) และขยายขนาดรับไฟล์ Excel สูงสุดถึง 50MB
-- **`app` (Node.js/Hono):** รันแอปพลิเคชันและให้บริการ API อยู่ภายใน Docker Network (พอร์ต 3000)
+### 1. 🧱 โครงสร้าง Services ใน Production (`docker-compose.prod.yml`)
+- **`proxy` (Nginx:alpine):** ทางเข้าหลัก Listen ที่พอร์ต `5009` (หรือ `${APP_PORT}`) รับทราฟฟิกจาก **Pangolin** (`https://cal.tummy.cc`) ส่งต่อไปยังแอป พร้อมทั้งส่งต่อ Headers สำหรับ Better Auth (`Host`, `X-Forwarded-Proto`, `X-Forwarded-For`), รองรับ WebSocket และอัปโหลดไฟล์ Excel สูงสุด 50MB
+- **`app` (Node.js 22 / Hono):** รัน API Backend และ Frontend SPA ภายใน Docker Network (พอร์ต 3000)
 - **`db` (PostgreSQL 17):** ฐานข้อมูลหลักพร้อม Healthcheck
 
-### 2. ขั้นตอนการ Deploy
-1. **กำหนดค่า Environment Variables (`.env`):**
-   คัดลอกไฟล์ `.env.prod.example` ไปเป็น `.env` และกำหนดค่า:
-   ```env
-   APP_PORT=5009
-   BETTER_AUTH_URL="https://cal.tummy.cc"
-   ALLOWED_ORIGINS="https://cal.tummy.cc,http://10.10.10.254:5009"
-   BOT_API_KEY="คีย์_Authorization_ของธนาคารแห่งประเทศไทย"
-   ```
-2. **การรัน Migration (ทำงานอัตโนมัติ):**
-   คอนเทนเนอร์ `app` ใน `docker-compose.prod.yml` ถูกกำหนดให้รันคำสั่ง `npx prisma migrate deploy` โดยอัตโนมัติทุกครั้งเมื่อ Boot ขึ้นมา
-3. **การสั่งรัน Container:**
-   ```bash
-   docker compose -f docker-compose.prod.yml up -d --build
-   ```
-4. **การตั้งค่า Pangolin:**
-   ในหน้าคอนฟิกของ Pangolin ให้ชี้ Target/Upstream ไปที่:
-   ```
-   http://10.10.10.254:5009
-   ```
+---
 
-### 📅 3. การดึงข้อมูลอัตราแลกเปลี่ยนย้อนหลัง 1 ปี (Historical Seeding)
-เพื่อความสะดวกในการเริ่มระบบครั้งแรกและมีข้อมูลย้อนหลังแสดงบนหน้าเว็บทันทีโดยไม่ต้องรอระบบซิงค์ของแต่ละวัน ให้คุณรันสคริปต์ย้อนหลัง 1 ปี (365 วัน) **ผ่านคอนเทนเนอร์ที่กำลังทำงานอยู่** ด้วยคำสั่งนี้:
+### 2. 🚀 ขั้นตอนการติดตั้งบน Debian Linux (Host: `10.10.10.254`)
 
-* **คำสั่งสำหรับการรันย้อนหลังภายใต้ Docker:**
-  ```bash
-  docker compose -f docker-compose.prod.yml exec app node prisma/seed-exchange-rates.js
-  ```
-* **รายละเอียดการทำงาน:**
-  * สคริปต์จะทำการดึงข้อมูลเรทซื้อแบบโอนเงิน (`buying_transfer`) ของสกุลเงิน `USD`, `EUR`, `CNY`, `JPY`, และ `GBP` ย้อนหลัง 1 ปีจาก API ของ ธปท.
-  * ทำการดึงข้อมูลทีละ 30 วัน (เพื่อไม่ให้เกินขีดจำกัดสูงสุด 31 วันต่อ 1 Request ของ ธปท.) พร้อมหน่วงเวลา 1 วินาทีในทุกรอบการยิงเพื่อป้องกันการโดนบล็อกไอพี
-  * สคริปต์นี้ถูกคอมไพล์เป็น JavaScript ไว้ล่วงหน้าแล้วตอนสั่ง Docker build ทำให้รันโดยตรงบน Node.js ในคอนเทนเนอร์ได้อย่างรวดเร็วและใช้เมมโมรี่น้อย
+#### ขั้นตอนที่ 1: ตรวจสอบความพร้อม Docker
+```bash
+docker --version
+docker compose version
+
+# (กรณีต้องใช้ sudo ตลอด ให้เพิ่มสิทธิ์ User)
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+#### ขั้นตอนที่ 2: Clone โค้ดลงบนเซิร์ฟเวอร์
+```bash
+mkdir -p ~/apps && cd ~/apps
+git clone https://github.com/kruntum/customs-converter.git
+cd customs-converter
+```
+
+#### ขั้นตอนที่ 3: สร้างและตั้งค่าไฟล์ `.env`
+```bash
+cp .env.prod.example .env
+nano .env
+```
+กำหนดค่าต่างๆ ดังนี้:
+```env
+NODE_ENV="production"
+PORT=3000
+APP_PORT=5009
+
+# 1. ฐานข้อมูล PostgreSQL
+DB_USER="customs_converter_user"
+DB_NAME="customs_converter_db"
+DB_PASSWORD="ใส่รหัสผ่านฐานข้อมูลที่มีความปลอดภัยสูง"
+
+# 2. Better Auth (สร้างคีย์สุ่มด้วยคำสั่ง: openssl rand -hex 32)
+BETTER_AUTH_SECRET="ใส่คีย์สุ่ม_HEX_32_ตัวอักษร"
+BETTER_AUTH_URL="https://cal.tummy.cc"
+
+# 3. Security (CORS) & Bank of Thailand API
+ALLOWED_ORIGINS="https://cal.tummy.cc,http://10.10.10.254:5009"
+BOT_API_KEY="ใส่_API_Key_ของธนาคารแห่งประเทศไทย"
+```
+
+> [!TIP]
+> สามารถสุ่มสร้างรหัสผ่านและ Auth Secret บน Debian ได้ด้วยคำสั่ง:
+> ```bash
+> openssl rand -hex 32
+> ```
+
+#### ขั้นตอนที่ 4: สั่ง Build และรัน Containers
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+*(ระบบจะรัน `npx prisma migrate deploy` โดยอัตโนมัติ เพื่อเตรียมโครงสร้างตารางข้อมูลล่าสุด)*
+
+ตรวจสอบสถานะว่าคอนเทนเนอร์ทำงานครบทั้ง 3 ตัว:
+```bash
+docker compose -f docker-compose.prod.yml ps
+```
+
+#### ขั้นตอนที่ 5: สร้างบัญชีแอดมินเริ่มต้น และดึงเรท ธปท. ย้อนหลัง 1 ปี
+```bash
+# 1. สร้างบัญชี Admin เริ่มต้น (admin@currency.local / admin1234)
+docker compose -f docker-compose.prod.yml exec app node prisma/seed.js
+
+# 2. ดึงเรท ธปท. ย้อนหลัง 365 วัน (USD, EUR, CNY, JPY, GBP)
+docker compose -f docker-compose.prod.yml exec app node prisma/seed-exchange-rates.js
+```
+
+#### ขั้นตอนที่ 6: ผูกกับ Pangolin
+ในหน้า Pangolin Dashboard ให้เพิ่ม Route:
+- **Domain / Hostname:** `cal.tummy.cc`
+- **Target / Upstream:** `http://10.10.10.254:5009` *(หรือ `http://localhost:5009` หากรันบนเครื่องเดียวกัน)*
+- **SSL / HTTPS:** Enabled
+- เข้าใช้งานได้ทันทีที่: **`https://cal.tummy.cc`**
+
+---
+
+### 3. 🛠️ คำสั่งที่ใช้บ่อยในการดูแลระบบ (Maintenance)
+```bash
+# ดู Log การทำงาน
+docker compose -f docker-compose.prod.yml logs -f
+
+# ดูเฉพาะ Log ของ Nginx Proxy
+docker compose -f docker-compose.prod.yml logs -f proxy
+
+# ดูเฉพาะ Log ของ App Backend
+docker compose -f docker-compose.prod.yml logs -f app
+
+# Restart ทุก Service
+docker compose -f docker-compose.prod.yml restart
+
+# ปิดระบบทั้งหมด
+docker compose -f docker-compose.prod.yml down
+
+# สำรองข้อมูลฐานข้อมูล (Backup Database)
+docker compose -f docker-compose.prod.yml exec db pg_dump -U customs_converter_user customs_converter_db > backup_$(date +%Y%m%d_%H%M%S).sql
+```
 
 ---
 
