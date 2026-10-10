@@ -20,6 +20,7 @@ const DEFAULTS: Record<string, string> = {
     exchange_rate_last_sync_at: '',
     exchange_rate_last_status: 'idle',
     exchange_rate_last_records: '0',
+    exchange_rate_last_error: '',
 };
 
 /** อ่านค่า config 1 ค่า */
@@ -58,13 +59,15 @@ export async function getExchangeRateSyncConfig() {
         'exchange_rate_last_sync_at',
         'exchange_rate_last_status',
         'exchange_rate_last_records',
+        'exchange_rate_last_error',
     ]);
 
     return {
         syncHour: parseInt(cfg.exchange_rate_sync_hour ?? '18'),
         enabled: cfg.exchange_rate_sync_enabled !== 'false',
         lastSyncAt: cfg.exchange_rate_last_sync_at || null,
-        lastStatus: cfg.exchange_rate_last_status as 'idle' | 'running' | 'success' | 'error',
+        lastStatus: cfg.exchange_rate_last_status as 'idle' | 'running' | 'success' | 'partial' | 'error',
         lastRecords: parseInt(cfg.exchange_rate_last_records ?? '0'),
+        lastError: cfg.exchange_rate_last_error || null,
     };
 }

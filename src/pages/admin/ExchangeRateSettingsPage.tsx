@@ -21,6 +21,7 @@ interface SyncConfig {
     lastSyncAt: string | null;
     lastStatus: 'idle' | 'running' | 'success' | 'partial' | 'error';
     lastRecords: number;
+    lastError?: string | null;
     nextSyncAt: string;
     totalRates: number;
 }
@@ -197,6 +198,23 @@ export default function ExchangeRateSettingsPage() {
                         </Card>
                     ))}
                 </div>
+
+                {/* Error alert banner if sync failed */}
+                {config?.lastError && (
+                    <Card className="border-destructive/40 bg-destructive/10 dark:bg-destructive/15">
+                        <CardContent className="pt-3 pb-3 px-4 flex items-start gap-2.5">
+                            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                            <div className="space-y-0.5 text-xs">
+                                <p className="font-semibold text-destructive">
+                                    รายละเอียดข้อผิดพลาดจากการ Sync ล่าสุด:
+                                </p>
+                                <p className="text-muted-foreground font-mono text-[11px] break-all">
+                                    {config.lastError}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Settings Card */}
                 <Card>

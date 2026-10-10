@@ -39,6 +39,20 @@ interface BotApiResponse {
     };
 }
 
+export function cleanApiKey(key?: string): string | null {
+    if (!key) return null;
+    const cleaned = key.trim().replace(/^["']|["']$/g, '').trim();
+    if (
+        !cleaned ||
+        cleaned === 'your_bot_api_key_here' ||
+        cleaned === 'your-production-bot-api-key-here' ||
+        cleaned.startsWith('ใส่_')
+    ) {
+        return null;
+    }
+    return cleaned;
+}
+
 /**
  * Fetch อัตราแลกเปลี่ยนสำหรับ 1 สกุลเงิน ย้อนหลัง N วัน
  * แล้ว upsert เข้า DB ทั้งหมด
@@ -57,7 +71,8 @@ async function syncCurrencyRates(currency: string, apiKey: string): Promise<numb
     });
 
     if (!response.ok) {
-        throw new Error(`BOT API error ${response.status}: ${response.statusText}`);
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`BOT API error ${response.status}: ${response.statusText}${errorText ? ` (${errorText.slice(0, 100)})` : ''}`);
     }
 
     const data: BotApiResponse = await response.json();
@@ -98,10 +113,17 @@ async function syncCurrencyRates(currency: string, apiKey: string): Promise<numb
  * บันทึกผลลัพธ์กลับเข้า SystemConfig ด้วย
  */
 export async function runDailyExchangeRateSync(): Promise<void> {
-    const apiKey = process.env.BOT_API_KEY;
+    const apiKey = cleanApiKey(process.env.BOT_API_KEY);
 
-    if (!apiKey || apiKey === 'your_bot_api_key_here') {
-        console.warn('[ExchangeRateSync] ⚠️  BOT_API_KEY ไม่ได้ตั้งค่า — ข้ามการ sync');
+    if (!apiKey) {
+        const errMsg = 'BOT_API_KEY ยังไม่ได้ตั้งค่าหรือเป็นค่าเริ่มต้นใน .env';
+        console.warn(`[ExchangeRateSync] ⚠️  ${errMsg}`);
+        await Promise.all([
+            setConfig('exchange_rate_last_sync_at', new Date().toISOString()),
+            setConfig('exchange_rate_last_status', 'error'),
+            setConfig('exchange_rate_last_records', '0'),
+            setConfig('exchange_rate_last_error', errMsg),
+        ]);
         return;
     }
 
@@ -136,18 +158,20 @@ export async function runDailyExchangeRateSync(): Promise<void> {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const status = errors.length === 0 ? 'success' : (totalSynced > 0 ? 'partial' : 'error');
+    const lastError = errors.length > 0 ? errors.join('; ') : '';
 
     // บันทึกผลลัพธ์ลง DB เพื่อให้ Admin ดูได้
     await Promise.all([
         setConfig('exchange_rate_last_sync_at', new Date().toISOString()),
         setConfig('exchange_rate_last_status', status),
         setConfig('exchange_rate_last_records', String(totalSynced)),
+        setConfig('exchange_rate_last_error', lastError),
     ]);
 
     if (status === 'success') {
         console.log(`[ExchangeRateSync] ✅ Sync เสร็จ — ${totalSynced} records ใน ${elapsed}s`);
     } else {
-        console.warn(`[ExchangeRateSync] ⚠️  Sync เสร็จบางส่วน — ${totalSynced} records, ${errors.length} errors ใน ${elapsed}s`);
+        console.warn(`[ExchangeRateSync] ⚠️  Sync เสร็จบางส่วน/ล้มเหลว — ${totalSynced} records, ${errors.length} errors ใน ${elapsed}s`);
     }
 }
 

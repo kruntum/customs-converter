@@ -1,5 +1,6 @@
 import { subDays, format } from 'date-fns';
 import { prisma } from '../db.js';
+import { cleanApiKey } from './exchange-rate-sync.js';
 
 interface BotApiResponse {
     result: {
@@ -68,10 +69,10 @@ export async function fetchBotExchangeRate(
     }
 
     // 2. Fetch from BOT API
-    const apiKey = process.env.BOT_API_KEY;
+    const apiKey = cleanApiKey(process.env.BOT_API_KEY);
 
-    if (!apiKey || apiKey === 'your_bot_api_key_here') {
-        console.warn('BOT_API_KEY not configured, returning null');
+    if (!apiKey) {
+        console.warn('BOT_API_KEY not configured or invalid, returning null');
         return null;
     }
 
@@ -188,10 +189,10 @@ export async function fetchBotExchangeRateWithFallback(
     }
 
     // 2. Fetch from BOT API (query window from targetRateDate down to 180 days prior)
-    const apiKey = process.env.BOT_API_KEY;
+    const apiKey = cleanApiKey(process.env.BOT_API_KEY);
 
-    if (!apiKey || apiKey === 'your_bot_api_key_here') {
-        console.warn('BOT_API_KEY not configured, returning null');
+    if (!apiKey) {
+        console.warn('BOT_API_KEY not configured or invalid, returning null');
         return null;
     }
 

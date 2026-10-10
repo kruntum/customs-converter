@@ -29,6 +29,7 @@ exchangeRateAdminRoutes.get('/exchange-rate-config', async (c) => {
             lastSyncAt: config.lastSyncAt,
             lastStatus: config.lastStatus,
             lastRecords: config.lastRecords,
+            lastError: config.lastError,
             nextSyncAt: nextRun.toISOString(),
             totalRates,
         },

@@ -33,9 +33,10 @@ interface BotApiResponse {
 }
 
 async function main() {
-    const apiKey = process.env.BOT_API_KEY;
-    if (!apiKey || apiKey === 'your_bot_api_key_here') {
-        console.error('❌ BOT_API_KEY not configured in .env file!');
+    const rawKey = process.env.BOT_API_KEY;
+    const apiKey = rawKey?.trim().replace(/^["']|["']$/g, '').trim();
+    if (!apiKey || apiKey === 'your_bot_api_key_here' || apiKey === 'your-production-bot-api-key-here' || apiKey.startsWith('ใส่_')) {
+        console.error('❌ BOT_API_KEY not configured or invalid in .env file!');
         process.exit(1);
     }
 
