@@ -166,62 +166,62 @@ export function InvoiceCard({
                 <tbody>
                   {invoice.items.map((item, itemIdx) => (
                     <tr key={itemIdx} className="border-b last:border-0 hover:bg-muted/20">
-                      <td className="py-1 px-1 text-center text-muted-foreground">{itemIdx + 1}</td>
+                      <td className="py-1 px-1 text-center text-muted-foreground text-[11px]">{itemIdx + 1}</td>
                       <td className="py-1 px-1">
                         <ProductCombobox 
                           value={item.goodsName} 
                           onChange={(val) => onUpdateItem(itemIdx, 'goodsName', val)} 
-                          className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
+                          className="h-7 text-[11px] bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
                         />
                       </td>
                       <td className="py-1 px-1">
-                        <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="1" value={item.quantity || ''}
+                        <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="1" value={item.quantity || ''}
                           onChange={(e) => onUpdateItem(itemIdx, 'quantity', e.target.value)} />
                       </td>
                       {isImport ? (
                         <>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.001" placeholder="0.00" value={item.netWeight || ''}
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.001" placeholder="0.00" value={item.netWeight || ''}
                               onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.0001" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.0001" placeholder="0.00"
                               value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.fobPrice || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'fobPrice', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.freight || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'freight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.insurance || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'insurance', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
                           </td>
                         </>
                       ) : (
                         <>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="0.00" value={item.netWeight}
+                            <Input className="h-7 text-right text-[11px] px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="0.00" value={item.netWeight}
                               onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs font-mono px-1.5 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-[11px] px-1.5 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
                           </td>
                         </>
                       )}
-                      <td className="py-1 px-2 text-right text-primary font-semibold text-xs font-mono whitespace-nowrap">
+                      <td className="py-1 px-2 text-right text-primary font-semibold text-[11px] whitespace-nowrap">
                         ฿{formatNumber(calcThb(item))}
                       </td>
                       <td className="py-1 px-1">

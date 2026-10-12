@@ -208,7 +208,7 @@ export default function ExchangeRateSettingsPage() {
                                 <p className="font-semibold text-destructive">
                                     รายละเอียดข้อผิดพลาดจากการ Sync ล่าสุด:
                                 </p>
-                                <p className="text-muted-foreground font-mono text-[11px] break-all">
+                                <p className="text-muted-foreground text-[11px] break-all">
                                     {config.lastError}
                                 </p>
                             </div>

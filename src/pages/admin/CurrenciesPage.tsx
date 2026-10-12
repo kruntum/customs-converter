@@ -209,7 +209,7 @@ export default function CurrenciesPage() {
                           {(page - 1) * perPage + index + 1}
                         </TableCell>
                         <TableCell className="py-1.5 h-10">
-                          <Badge variant="outline" className="font-mono text-[10px] shadow-none">{c.code}</Badge>
+                          <Badge variant="outline" className="text-[10px] shadow-none">{c.code}</Badge>
                         </TableCell>
                         <TableCell className="text-base py-1.5 h-10">{c.symbol || '—'}</TableCell>
                         <TableCell className="font-medium text-sm py-1.5 h-10">{c.nameTh}</TableCell>

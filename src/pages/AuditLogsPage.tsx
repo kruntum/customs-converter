@@ -126,20 +126,20 @@ export default function AuditLogsPage() {
                       </TableCell>
                       <TableCell className="align-top py-2">
                         <div className="font-medium text-slate-700 dark:text-slate-300">{log.entity}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5">ID: {log.entityId}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">ID: {log.entityId}</div>
                       </TableCell>
                       <TableCell className="align-top py-2">
                          <div className="space-y-1.5 max-w-2xl overflow-x-auto">
                             {log.oldValues && (
-                                <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 rounded p-1.5 font-mono text-[10px]">
+                                <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 rounded p-1.5 text-[10px]">
                                     <span className="text-rose-600 dark:text-rose-400 font-bold mb-0.5 block">Old:</span>
-                                    <pre className="text-rose-800 dark:text-rose-300/80 overflow-hidden whitespace-pre-wrap leading-tight">{JSON.stringify(log.oldValues, null, 2)}</pre>
+                                    <pre className="text-rose-800 dark:text-rose-300/80 overflow-hidden whitespace-pre-wrap leading-tight font-sans">{JSON.stringify(log.oldValues, null, 2)}</pre>
                                 </div>
                             )}
                             {log.newValues && (
-                                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded p-1.5 font-mono text-[10px]">
+                                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded p-1.5 text-[10px]">
                                     <span className="text-emerald-600 dark:text-emerald-400 font-bold mb-0.5 block">New:</span>
-                                    <pre className="text-emerald-800 dark:text-emerald-300/80 overflow-hidden whitespace-pre-wrap leading-tight">{JSON.stringify(log.newValues, null, 2)}</pre>
+                                    <pre className="text-emerald-800 dark:text-emerald-300/80 overflow-hidden whitespace-pre-wrap leading-tight font-sans">{JSON.stringify(log.newValues, null, 2)}</pre>
                                 </div>
                             )}
                             {!log.oldValues && !log.newValues && (

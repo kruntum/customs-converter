@@ -460,7 +460,7 @@ export default function TransactionFormPage() {
                         title="คลิกเพื่อใช้อัตราซื้อนี้"
                       >
                         <span>🛒 อัตราซื้อ (เงินโอน):</span>
-                        <span className="font-mono font-bold">{formatNumber(rate.buyingTransfer, 4)}</span>
+                        <span className="font-bold">{formatNumber(rate.buyingTransfer, 4)}</span>
                         {type === 'EXPORT' && (
                           <span className="text-[10px] px-1 py-0.5 rounded bg-blue-200/90 dark:bg-blue-800 text-blue-800 dark:text-blue-100 font-medium">
                             เกณฑ์ขาออก
@@ -483,7 +483,7 @@ export default function TransactionFormPage() {
                         title="คลิกเพื่อใช้อัตราขายนี้"
                       >
                         <span>🏷️ อัตราขาย:</span>
-                        <span className="font-mono font-bold">{formatNumber(rate.selling, 4)}</span>
+                        <span className="font-bold">{formatNumber(rate.selling, 4)}</span>
                         {type === 'IMPORT' && (
                           <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-200/90 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-100 font-medium">
                             เกณฑ์ขาเข้า
