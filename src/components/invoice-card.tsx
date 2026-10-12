@@ -140,27 +140,27 @@ export function InvoiceCard({
               <table className="w-full text-xs">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    <th className="py-1.5 px-1 text-left w-[20px]">#</th>
-                    <th className="py-1.5 px-1 text-left min-w-[130px]">ชื่อสินค้า *</th>
-                    <th className="py-1.5 px-1 text-right w-[60px]">จำนวน</th>
+                    <th className="py-2 px-1 text-center w-[28px]">#</th>
+                    <th className="py-2 px-1.5 text-left min-w-[150px] md:min-w-[180px]">ชื่อสินค้า *</th>
+                    <th className="py-2 px-1 text-right w-[65px]">จำนวน</th>
                     {isImport ? (
                       <>
-                        <th className="py-1.5 px-1 text-right w-[65px]">นน. (NW)</th>
-                        <th className="py-1.5 px-1 text-right w-[75px]">ราคา/หน่วย</th>
-                        <th className="py-1.5 px-1 text-right w-[80px]">FOB</th>
-                        <th className="py-1.5 px-1 text-right w-[80px]">ค่าระวาง</th>
-                        <th className="py-1.5 px-1 text-right w-[80px]">ค่าประกัน</th>
-                        <th className="py-1.5 px-1 text-right w-[85px] text-primary font-bold">รวม ({currencyCode}) *</th>
+                        <th className="py-2 px-1 text-right w-[85px]">นน. (NW)</th>
+                        <th className="py-2 px-1 text-right w-[95px]">ราคา/หน่วย</th>
+                        <th className="py-2 px-1 text-right w-[100px]">FOB</th>
+                        <th className="py-2 px-1 text-right w-[95px]">ค่าระวาง</th>
+                        <th className="py-2 px-1 text-right w-[95px]">ค่าประกัน</th>
+                        <th className="py-2 px-1 text-right w-[120px] text-primary font-bold">รวม ({currencyCode}) *</th>
                       </>
                     ) : (
                       <>
-                        <th className="py-1.5 px-1 text-right w-[80px]">น้ำหนัก</th>
-                        <th className="py-1.5 px-1 text-right w-[90px]">ราคา/หน่วย *</th>
-                        <th className="py-1.5 px-1 text-right w-[90px] text-primary font-bold">รวม FOB ({currencyCode}) *</th>
+                        <th className="py-2 px-1 text-right w-[100px]">น้ำหนัก</th>
+                        <th className="py-2 px-1 text-right w-[110px]">ราคา/หน่วย *</th>
+                        <th className="py-2 px-1 text-right w-[130px] text-primary font-bold">รวม FOB ({currencyCode}) *</th>
                       </>
                     )}
-                    <th className="py-1.5 px-1 text-right w-[85px]">THB (CIF)</th>
-                    <th className="py-1.5 px-1 w-[28px]"></th>
+                    <th className="py-2 px-2 text-right w-[125px]">THB (CIF)</th>
+                    <th className="py-2 px-1 w-[32px]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,57 +171,57 @@ export function InvoiceCard({
                         <ProductCombobox 
                           value={item.goodsName} 
                           onChange={(val) => onUpdateItem(itemIdx, 'goodsName', val)} 
-                          className="h-7 text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
+                          className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40" 
                         />
                       </td>
                       <td className="py-1 px-1">
-                        <Input className="h-7 text-right text-xs md:text-xs" type="number" placeholder="1" value={item.quantity || ''}
+                        <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="1" value={item.quantity || ''}
                           onChange={(e) => onUpdateItem(itemIdx, 'quantity', e.target.value)} />
                       </td>
                       {isImport ? (
                         <>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.001" placeholder="0.00" value={item.netWeight || ''}
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.001" placeholder="0.00" value={item.netWeight || ''}
                               onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.0001" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.0001" placeholder="0.00"
                               value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.fobPrice || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'fobPrice', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.freight || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'freight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.insurance || ''} onChange={(e) => handlePriceComponentChange(itemIdx, 'insurance', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 font-semibold" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
                           </td>
                         </>
                       ) : (
                         <>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs" type="number" placeholder="0.00" value={item.netWeight}
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" placeholder="0.00" value={item.netWeight}
                               onChange={(e) => onUpdateItem(itemIdx, 'netWeight', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus-visible:ring-warning/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.price} onChange={(e) => onUpdateItem(itemIdx, 'price', e.target.value)} />
                           </td>
                           <td className="py-1 px-1">
-                            <Input className="h-7 text-right text-xs md:text-xs font-semibold" type="number" step="0.01" placeholder="0.00"
+                            <Input className="h-7 text-right text-xs font-mono px-1.5 font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" step="0.01" placeholder="0.00"
                               value={item.totalPrice} onChange={(e) => onUpdateItem(itemIdx, 'totalPrice', e.target.value)} />
                           </td>
                         </>
                       )}
-                      <td className="py-1 px-1 text-right text-primary font-semibold text-xs">
+                      <td className="py-1 px-2 text-right text-primary font-semibold text-xs font-mono whitespace-nowrap">
                         ฿{formatNumber(calcThb(item))}
                       </td>
                       <td className="py-1 px-1">

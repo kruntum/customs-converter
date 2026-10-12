@@ -325,7 +325,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="w-[96vw] max-w-[96vw] xl:max-w-[1440px] 2xl:max-w-[1600px] max-h-[92vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-4 pt-4 pb-2 shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
