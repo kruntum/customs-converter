@@ -62,6 +62,12 @@ export function CompanySwitcher() {
     }
   };
 
+  const canAddCompany = isGlobalAdmin || companies.some((c) => {
+    if (c.createdBy === userId) return true;
+    const member = c.companyUsers?.find((cu) => cu.userId === userId);
+    return member && (member.role === 'OWNER' || member.role === 'ADMIN');
+  });
+
   const handleManageCompanies = () => {
     navigate('/companies');
   };
@@ -70,19 +76,35 @@ export function CompanySwitcher() {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            size="lg"
-            onClick={handleManageCompanies}
-            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          >
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Plus className="size-4" />
-            </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">สร้างบริษัท</span>
-              <span className="truncate text-xs text-muted-foreground">เริ่มต้นใช้งาน</span>
-            </div>
-          </SidebarMenuButton>
+          {canAddCompany ? (
+            <SidebarMenuButton
+              size="lg"
+              onClick={handleManageCompanies}
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Plus className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">สร้างบริษัท</span>
+                <span className="truncate text-xs text-muted-foreground">เริ่มต้นใช้งาน</span>
+              </div>
+            </SidebarMenuButton>
+          ) : (
+            <SidebarMenuButton
+              size="lg"
+              onClick={handleManageCompanies}
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Building2 className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">ยังไม่มีบริษัท</span>
+                <span className="truncate text-xs text-muted-foreground">รอผู้ดูแลระบบมอบหมาย</span>
+              </div>
+            </SidebarMenuButton>
+          )}
         </SidebarMenuItem>
       </SidebarMenu>
     );
@@ -143,7 +165,7 @@ export function CompanySwitcher() {
             <DropdownMenuSeparator />
             <DropdownMenuItem className="gap-2 p-2" onClick={handleManageCompanies}>
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
+                <Building2 className="size-4" />
               </div>
               <div className="text-muted-foreground font-medium">จัดการบริษัท</div>
             </DropdownMenuItem>

@@ -66,7 +66,6 @@ export default function CompanyPage() {
 
   const canAddCompany = () => {
     if (isGlobalAdmin) return true;
-    if (companies.length === 0) return true;
     return companies.some((c) => {
       if (c.createdBy === userId) return true;
       const member = c.companyUsers?.find((cu) => cu.userId === userId);
@@ -104,6 +103,10 @@ export default function CompanyPage() {
   };
 
   const handleOpenCreate = () => {
+    if (!canAddCompany()) {
+      toast.error('เฉพาะผู้ดูแลระบบ (Admin) หรือ Owner เท่านั้นที่สามารถสร้างบริษัทได้');
+      return;
+    }
     resetForm();
     setDialogOpen(true);
   };
@@ -209,8 +212,12 @@ export default function CompanyPage() {
             ) : companies.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Building2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>ยังไม่มีบริษัท</p>
-                <p className="text-sm mt-1">กดปุ่ม "เพิ่มบริษัท" เพื่อเริ่มต้น</p>
+                <p className="font-medium text-foreground">ยังไม่มีบริษัท</p>
+                {canAddCompany() ? (
+                  <p className="text-sm mt-1">กดปุ่ม "เพิ่มบริษัท" เพื่อเริ่มต้น</p>
+                ) : (
+                  <p className="text-sm mt-1 text-muted-foreground">กรุณาติดต่อผู้ดูแลระบบ (Admin) เพื่อมอบหมายบริษัทให้คุณเข้าใช้งาน</p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-md">

@@ -76,6 +76,23 @@ companyRoutes.get('/:id', async (c) => {
 // POST /api/companies
 companyRoutes.post('/', async (c) => {
     const user = c.get('user');
+
+    // Role-based access: Only global admin or existing company OWNER/ADMIN can create companies
+    if (user.role !== 'admin') {
+        const isOwnerOrAdmin = await prisma.companyUser.findFirst({
+            where: {
+                userId: user.id,
+                role: { in: ['OWNER', 'ADMIN'] }
+            }
+        });
+        const hasCreatedCompany = await prisma.company.findFirst({
+            where: { createdBy: user.id }
+        });
+        if (!isOwnerOrAdmin && !hasCreatedCompany) {
+            return c.json({ error: 'Forbidden: เฉพาะ Admin หรือ Owner เท่านั้นที่สามารถสร้างบริษัทได้' }, 403);
+        }
+    }
+
     const body = await c.req.json();
 
     const parsed = companySchema.safeParse(body);
