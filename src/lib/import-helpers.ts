@@ -121,6 +121,8 @@ export interface ImportItem {
     itemNo?: number | null;
 }
 
+import { parseCustomsDeclarationNumber, type CustomsDirection } from './customs-declaration';
+
 export interface ImportInvoice {
     invoiceNumber: string;
     invoiceDate: string; // YYYY-MM-DD
@@ -135,6 +137,9 @@ export interface ImportTransaction {
     exporterTaxNo: string;
     exporterName: string;
     invoices: ImportInvoice[];
+    customsDocType?: string;
+    customsDocTypeName?: string;
+    detectedDirection?: CustomsDirection;
 }
 
 // Convert Excel dates (either strings or Serial Numbers) to YYYY-MM-DD
@@ -266,8 +271,11 @@ export function groupExcelRows(
         }
         const cleanedInvNo = cleanInvoiceNumber(rawInvNo) || 'NO_INVOICE';
 
-        // Parse dates
-        const declDate = ''; // Customs submission date should start empty
+        // Decode Customs Declaration Number (X X DD X YY MM NNNNN)
+        // เพื่อดึงวันส่งข้อมูลศุลกากร (DD / YY / MM) และประเภทใบขน (หลักที่ 5) โดยอัตโนมัติ
+        const customsParsed = parseCustomsDeclarationNumber(declNo);
+        const declDate = customsParsed.isValid && customsParsed.submissionDate ? customsParsed.submissionDate : '';
+
         const invDateRaw = findRowValue(row, 'invoiceDate', mapping?.invoiceDate);
         let invDate = parseExcelDate(invDateRaw);
         if (!invDate && lastInvDate && rawInvNo === lastInvNo) {
@@ -400,7 +408,10 @@ export function groupExcelRows(
                 notes: notes,
                 exporterTaxNo: taxNo,
                 exporterName: expName,
-                invoices: []
+                invoices: [],
+                customsDocType: customsParsed.isValid ? (customsParsed.typeCode || undefined) : undefined,
+                customsDocTypeName: customsParsed.isValid ? (customsParsed.typeName || undefined) : undefined,
+                detectedDirection: customsParsed.isValid ? customsParsed.direction : undefined,
             };
             transactionsMap.set(declNo, tx);
         }

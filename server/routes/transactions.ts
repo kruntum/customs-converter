@@ -5,6 +5,7 @@ import type { AppEnv } from '../types.js';
 import { requireCompanyRole } from '../middleware/companyAuth.js';
 import { logAuditData } from '../services/audit-service.js';
 import { calculateTransactionTotals } from '../utils/calculations.js';
+import { parseCustomsDeclarationNumber } from '../utils/customs-declaration.js';
 
 const transactionRoutes = new Hono<AppEnv>();
 
@@ -35,6 +36,8 @@ const transactionSchema = z.object({
     rateDate: z.string().min(1),
     rateSource: z.enum(['BOT', 'MANUAL', 'THB', 'LOCAL_DB']).default('BOT'),
     type: z.enum(['IMPORT', 'EXPORT']).default('IMPORT'),
+    customsDocType: z.string().optional().nullable(),
+    customsDocTypeName: z.string().optional().nullable(),
     // companyId is intentionally excluded — always sourced from middleware
     customerId: z.number().optional().nullable(),
     notes: z.string().optional().nullable(),
@@ -219,6 +222,7 @@ transactionRoutes.post('/', async (c) => {
     const totalThb = calculated.grandTotalThb;
     const invoicesData = calculated.invoices;
 
+    const customsInfo = parseCustomsDeclarationNumber(data.declarationNumber);
     const tx = await prisma.transaction.create({
         data: {
             declarationNumber: data.declarationNumber,
@@ -232,6 +236,8 @@ transactionRoutes.post('/', async (c) => {
             rateDate: new Date(data.rateDate),
             rateSource: data.rateSource,
             type: data.type,
+            customsDocType: data.customsDocType || customsInfo.typeCode || null,
+            customsDocTypeName: data.customsDocTypeName || customsInfo.typeName || null,
             companyId,
             customerId: data.customerId || null,
             createdBy: user.id,
@@ -335,6 +341,11 @@ transactionRoutes.post('/validate-import', async (c) => {
         const errors: string[] = [];
         const warnings: string[] = [];
 
+        // Parse customs declaration number
+        const customsInfo = parseCustomsDeclarationNumber(tx.declarationNumber);
+        const resolvedDate = tx.declarationDate || customsInfo.submissionDate || '';
+        const detectedDirection = customsInfo.direction;
+
         // 1. First step check: Exporter Tax ID matching
         const fileTaxClean = cleanTaxIdStr(tx.exporterTaxNo);
         let taxMismatch = false;
@@ -359,8 +370,6 @@ transactionRoutes.post('/validate-import', async (c) => {
             errors.push(`ไม่รองรับสกุลเงิน ${curr} ในระบบ`);
         }
 
-        // Date formats validation is handled during import confirmation; it starts empty on upload
-
         // Status determination
         let status: 'valid' | 'warning' | 'error' = 'valid';
         if (errors.length > 0) {
@@ -371,6 +380,10 @@ transactionRoutes.post('/validate-import', async (c) => {
 
         return {
             ...tx,
+            declarationDate: resolvedDate,
+            customsDocType: tx.customsDocType || customsInfo.typeCode || null,
+            customsDocTypeName: tx.customsDocTypeName || customsInfo.typeName || null,
+            detectedDirection: tx.detectedDirection || detectedDirection,
             validation: {
                 status,
                 taxMismatch,
@@ -489,6 +502,9 @@ transactionRoutes.post('/confirm-import', async (c) => {
                 }));
 
                 const rate = parseFloat(exchangeRate);
+                const customsInfo = parseCustomsDeclarationNumber(declNo);
+                const effectiveType = (type || txn.type || (customsInfo.direction === 'EXPORT' ? 'EXPORT' : 'IMPORT')) as 'IMPORT' | 'EXPORT';
+
                 const calculated = calculateTransactionTotals({
                     invoices: rawInvoices,
                     exchangeRate: rate,
@@ -496,7 +512,7 @@ transactionRoutes.post('/confirm-import', async (c) => {
                     companyId,
                     userId: user.id,
                     roundingMethod,
-                    type: 'IMPORT',
+                    type: effectiveType,
                 });
 
                 const totalForeign = calculated.grandTotalForeign;
@@ -526,7 +542,7 @@ transactionRoutes.post('/confirm-import', async (c) => {
                 const createdTx = await tx.transaction.create({
                     data: {
                         declarationNumber: declNo,
-                        declarationDate: new Date(txn.declarationDate),
+                        declarationDate: new Date(txn.declarationDate || customsInfo.submissionDate || rateDate),
                         invoiceNumber: invoicesData.map(i => i.invoiceNumber).join(', '),
                         invoiceDate: invoicesData[0].invoiceDate,
                         currencyCode: txn.currencyCode,
@@ -535,7 +551,9 @@ transactionRoutes.post('/confirm-import', async (c) => {
                         thbAmount: totalThb,
                         rateDate: new Date(rateDate),
                         rateSource: rateSource || 'BOT',
-                        type: type || 'IMPORT',
+                        type: effectiveType,
+                        customsDocType: txn.customsDocType || customsInfo.typeCode || null,
+                        customsDocTypeName: txn.customsDocTypeName || customsInfo.typeName || null,
                         companyId,
                         customerId: resolvedCustomerId,
                         createdBy: user.id,
@@ -660,6 +678,8 @@ transactionRoutes.put('/:id', async (c) => {
     const totalThb = calculated.grandTotalThb;
     const invoicesData = calculated.invoices;
 
+    const customsInfo = parseCustomsDeclarationNumber(data.declarationNumber);
+
     // Delete old invoices (cascade deletes items), then create new
     const tx = await prisma.$transaction(async (tx) => {
         await tx.invoice.deleteMany({ where: { transactionId: id } });
@@ -678,6 +698,8 @@ transactionRoutes.put('/:id', async (c) => {
                 rateDate: new Date(data.rateDate),
                 rateSource: data.rateSource,
                 type: data.type,
+                customsDocType: data.customsDocType || customsInfo.typeCode || null,
+                customsDocTypeName: data.customsDocTypeName || customsInfo.typeName || null,
                 notes: data.notes || null,
                 customerId: data.customerId || null,
                 invoices: {

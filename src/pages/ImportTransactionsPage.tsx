@@ -212,9 +212,24 @@ export default function ImportTransactionsPage() {
             setTaxMismatchBlocked(false);
             setTaxMismatchData(null);
             const grouped = groupExcelRows(rows, productLang, mapping);
+
+            // Auto-detect direction from customs declaration numbers
+            const exportCount = grouped.filter(g => g.detectedDirection === 'EXPORT').length;
+            const importCount = grouped.filter(g => g.detectedDirection === 'IMPORT').length;
+
+            let autoType: 'IMPORT' | 'EXPORT' = importType;
+            if (exportCount > 0 && exportCount >= importCount) {
+              autoType = 'EXPORT';
+              setImportType('EXPORT');
+            } else if (importCount > 0) {
+              autoType = 'IMPORT';
+              setImportType('IMPORT');
+            }
+
             setGroupedTxns(grouped);
-            await validateGroupedData(grouped);
-            toast.success(`โหลดข้อมูลใบขนสำเร็จ: ตรวจพบ ${grouped.length} ใบขน`, { position: 'top-center' });
+            await validateGroupedData(grouped, autoType);
+            const typeLabel = autoType === 'EXPORT' ? 'ขาออก (Export)' : 'ขาเข้า (Import)';
+            toast.success(`โหลดข้อมูลใบขนสำเร็จ: ตรวจพบ ${grouped.length} ใบขน [ประเภท: ${typeLabel}]`, { position: 'top-center' });
           }
         } catch (err) { toast.error((err as Error).message); } finally { setIsParsing(false); }
       };
@@ -222,7 +237,7 @@ export default function ImportTransactionsPage() {
     } catch (err) { setIsParsing(false); }
   };
 
-  const validateGroupedData = async (transactions: ImportTransaction[]) => {
+  const validateGroupedData = async (transactions: ImportTransaction[], targetType?: 'IMPORT' | 'EXPORT') => {
     setIsValidating(true);
     try {
       const res = await fetch(`/api/transactions/validate-import?companyId=${cId}`, { 
@@ -254,23 +269,33 @@ export default function ImportTransactionsPage() {
       setRowSettings(initialSettings);
       Object.keys(initialSettings).forEach(declNo => {
         const txn = transactions.find(t => t.declarationNumber === declNo);
-        if (txn && initialSettings[declNo].rateLoading) fetchBotRate(declNo, txn.currencyCode, initialSettings[declNo].submissionDate, true);
+        if (txn && initialSettings[declNo].rateLoading) {
+          const effectiveType = targetType || (txn.detectedDirection === 'EXPORT' ? 'EXPORT' : (txn.detectedDirection === 'IMPORT' ? 'IMPORT' : importType));
+          fetchBotRate(declNo, txn.currencyCode, initialSettings[declNo].submissionDate, true, effectiveType);
+        }
       });
     } catch (err) { toast.error((err as Error).message); } finally { setIsValidating(false); }
   };
 
-  const fetchBotRate = async (declNo: string, currency: string, submissionDate: string, skipStartLoading = false) => {
+  const fetchBotRate = async (declNo: string, currency: string, submissionDate: string, skipStartLoading = false, overrideType?: 'IMPORT' | 'EXPORT') => {
     if (!submissionDate || !submissionDate.trim() || currency === 'THB') return;
     if (!skipStartLoading) setRowSettings(prev => ({ ...prev, [declNo]: { ...prev[declNo], rateLoading: true, rateError: null } }));
     try {
       const res = await fetch(`/api/rates/bot-fallback/${currency}/${submissionDate}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
+      
+      const txn = groupedTxns.find(t => t.declarationNumber === declNo);
+      const effType = overrideType || (txn?.detectedDirection === 'EXPORT' ? 'EXPORT' : (txn?.detectedDirection === 'IMPORT' ? 'IMPORT' : importType));
+      const selectedRate = effType === 'EXPORT' 
+        ? (json.data.buyingTransfer || json.data.selling || '1')
+        : (json.data.selling || json.data.buyingTransfer || '1');
+
       setRowSettings(prev => ({ 
         ...prev, 
         [declNo]: { 
           ...prev[declNo], 
-          exchangeRate: importType === 'IMPORT' ? (json.data.selling || json.data.buyingTransfer) : json.data.buyingTransfer, 
+          exchangeRate: selectedRate, 
           rateDate: json.data.period, 
           rateSource: json.data.source || 'BOT',
           rateLoading: false, 
@@ -290,6 +315,17 @@ export default function ImportTransactionsPage() {
         } 
       })); 
     }
+  };
+
+  const handleSwitchImportType = (newType: 'IMPORT' | 'EXPORT') => {
+    setImportType(newType);
+    groupedTxns.forEach(tx => {
+      const setting = rowSettings[tx.declarationNumber];
+      if (setting?.submissionDate && tx.currencyCode !== 'THB') {
+        fetchBotRate(tx.declarationNumber, tx.currencyCode, setting.submissionDate, false, newType);
+      }
+    });
+    toast.info(`เปลี่ยนประเภทนำเข้าเป็น ${newType === 'EXPORT' ? 'ขาออก (Export)' : 'ขาเข้า (Import)'} และคำนวณอัตราแลกเปลี่ยนใหม่แล้ว`);
   };
 
   const handleSubmissionDateChange = (declNo: string, dateStr: string) => {
@@ -327,14 +363,23 @@ export default function ImportTransactionsPage() {
   const handleConfirmImport = async () => {
     const payload = groupedTxns.map((tx) => {
       const settings = rowSettings[tx.declarationNumber];
+      const effType = tx.detectedDirection === 'EXPORT'
+        ? 'EXPORT'
+        : (tx.detectedDirection === 'IMPORT' ? 'IMPORT' : importType);
+
       return { 
-        transaction: { ...tx, declarationDate: settings?.submissionDate || '' }, 
+        transaction: { 
+          ...tx, 
+          declarationDate: settings?.submissionDate || tx.declarationDate || '',
+          customsDocType: tx.customsDocType,
+          customsDocTypeName: tx.customsDocTypeName,
+        }, 
         customerId: settings?.customerId && settings.customerId !== 'none' ? parseInt(settings.customerId) : null, 
         duplicateAction: settings?.duplicateAction || 'skip', 
         exchangeRate: tx.currencyCode === 'THB' ? '1' : (settings?.exchangeRate || '1'), 
-        rateDate: tx.currencyCode === 'THB' ? settings?.submissionDate : (settings?.rateDate || settings?.submissionDate), 
+        rateDate: tx.currencyCode === 'THB' ? (settings?.submissionDate || tx.declarationDate) : (settings?.rateDate || settings?.submissionDate || tx.declarationDate), 
         rateSource: tx.currencyCode === 'THB' ? 'THB' : (settings?.rateSource || 'BOT'),
-        type: importType 
+        type: effType 
       };
     });
     setIsSubmitting(true);
@@ -450,8 +495,20 @@ export default function ImportTransactionsPage() {
     if (rawExcelRows.length > 0) {
       const mapping = (activeImportTemplate?.mapping as Record<string, string>) || null;
       const grouped = groupExcelRows(rawExcelRows, productLang, mapping);
+      const exportCount = grouped.filter(g => g.detectedDirection === 'EXPORT').length;
+      const importCount = grouped.filter(g => g.detectedDirection === 'IMPORT').length;
+
+      let autoType: 'IMPORT' | 'EXPORT' = importType;
+      if (exportCount > 0 && exportCount >= importCount) {
+        autoType = 'EXPORT';
+        setImportType('EXPORT');
+      } else if (importCount > 0) {
+        autoType = 'IMPORT';
+        setImportType('IMPORT');
+      }
+
       setGroupedTxns(grouped);
-      await validateGroupedData(grouped);
+      await validateGroupedData(grouped, autoType);
       toast.info('ดำเนินการต่อโดยข้ามการตรวจสอบเลขประจำตัวผู้เสียภาษี', { position: 'top-center' });
     }
   };
@@ -615,22 +672,37 @@ export default function ImportTransactionsPage() {
                     {/* Top Controls */}
                     <Card className="shrink-0 border-slate-200/60 dark:border-slate-800/40 shadow-xs">
                       <CardContent className="p-3 flex flex-wrap gap-3 items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Globe2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-xs font-medium">ภาษาชื่อสินค้า:</span>
-                          <div className="flex border rounded-md overflow-hidden bg-slate-50 dark:bg-slate-900">
-                            <button 
-                              className={`px-3 py-1 text-xs font-semibold ${productLang === 'TH' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                              onClick={() => setProductLang('TH')}
-                            >
-                              ไทย (TH)
-                            </button>
-                            <button 
-                              className={`px-3 py-1 text-xs font-semibold ${productLang === 'EN' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
-                              onClick={() => setProductLang('EN')}
-                            >
-                              อังกฤษ (EN)
-                            </button>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Globe2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs font-medium">ภาษาชื่อสินค้า:</span>
+                            <div className="flex border rounded-md overflow-hidden bg-slate-50 dark:bg-slate-900">
+                              <button 
+                                className={`px-3 py-1 text-xs font-semibold ${productLang === 'TH' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                                onClick={() => setProductLang('TH')}
+                              >
+                                ไทย (TH)
+                              </button>
+                              <button 
+                                className={`px-3 py-1 text-xs font-semibold ${productLang === 'EN' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                                onClick={() => setProductLang('EN')}
+                              >
+                                อังกฤษ (EN)
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">ประเภทใบขน:</span>
+                            <Select value={importType} onValueChange={(val: any) => handleSwitchImportType(val)}>
+                              <SelectTrigger className="h-7 text-xs w-[125px] bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="IMPORT" className="text-xs font-medium">ขาเข้า (Import)</SelectItem>
+                                <SelectItem value="EXPORT" className="text-xs font-medium">ขาออก (Export)</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
 
@@ -655,6 +727,51 @@ export default function ImportTransactionsPage() {
                       </CardContent>
                     </Card>
 
+                    {/* Mismatch Warning Banners */}
+                    {importType === 'IMPORT' && groupedTxns.some(t => t.detectedDirection === 'EXPORT') && (
+                      <div className="shrink-0 p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start sm:items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-0" />
+                          <div>
+                            <span className="font-semibold text-amber-800 dark:text-amber-300">แจ้งเตือน: ตรวจพบใบขนสินค้าขาออก (Export) ในไฟล์!</span>
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                              พบใบขนที่มีรหัสประเภทขาออก (เช่น 1, D) แต่หน้าจอนี้เลือกนำเข้าเป็น <strong>ขาเข้า (Import)</strong> แนะนำให้สลับเป็น "ขาออก" เพื่อใช้อัตราแลกเปลี่ยนซื้อเงินโอน (Buying Transfer) และคำนวณมูลค่าฐาน FOB
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="xs" 
+                          variant="outline" 
+                          onClick={() => handleSwitchImportType('EXPORT')}
+                          className="border-amber-500 bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100 shrink-0 font-medium"
+                        >
+                          เปลี่ยนเป็น ขาออก (Export) ทันที
+                        </Button>
+                      </div>
+                    )}
+
+                    {importType === 'EXPORT' && groupedTxns.some(t => t.detectedDirection === 'IMPORT') && (
+                      <div className="shrink-0 p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start sm:items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-0" />
+                          <div>
+                            <span className="font-semibold text-amber-800 dark:text-amber-300">แจ้งเตือน: ตรวจพบใบขนสินค้าขาเข้า (Import) ในไฟล์!</span>
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                              พบใบขนที่มีรหัสประเภทขาเข้า (เช่น 0, A, C) แต่หน้าจอนี้เลือกนำเข้าเป็น <strong>ขาออก (Export)</strong> แนะนำให้สลับเป็น "ขาเข้า" เพื่อใช้อัตราแลกเปลี่ยนขาย (Selling Rate) และรวมค่าระวาง/ประกัน (CIF)
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="xs" 
+                          variant="outline" 
+                          onClick={() => handleSwitchImportType('IMPORT')}
+                          className="border-amber-500 bg-amber-100 hover:bg-amber-200 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100 shrink-0 font-medium"
+                        >
+                          เปลี่ยนเป็น ขาเข้า (Import) ทันที
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Preview Table */}
                     <Card className="flex-1 flex flex-col min-h-0 overflow-hidden border-slate-200/60 dark:border-slate-800/40 shadow-xs">
                       <div className="p-3 border-b flex items-center justify-between gap-4 bg-muted/20">
@@ -673,7 +790,7 @@ export default function ImportTransactionsPage() {
                             <TableRow className="hover:bg-transparent">
                               <TableHead className="w-[36px] px-1"></TableHead>
                               <TableHead className="w-[85px] px-2">สถานะ</TableHead>
-                              <TableHead className="w-[160px] px-2">เลขที่ใบขน</TableHead>
+                              <TableHead className="w-[190px] px-2">เลขที่ใบขน / ประเภท</TableHead>
                               <TableHead className="w-[70px] px-2">สกุลเงิน</TableHead>
                               <TableHead className="w-[130px] px-2">ยอดรวมสินค้า</TableHead>
                               <TableHead className="w-[155px] px-2">วันส่งข้อมูลศุลกากร *</TableHead>
@@ -711,7 +828,28 @@ export default function ImportTransactionsPage() {
                                       </Button>
                                     </TableCell>
                                     <TableCell className="py-1.5 px-2">{statusBadge}</TableCell>
-                                    <TableCell className="py-1.5 px-2 font-medium">{declNo}</TableCell>
+                                    <TableCell className="py-1.5 px-2">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-semibold text-slate-900 dark:text-slate-100">{declNo}</span>
+                                        {tx.customsDocType && (
+                                          <div className="flex items-center gap-1">
+                                            <Badge 
+                                              variant="outline" 
+                                              className={`text-[9px] px-1 py-0 h-4 font-normal ${
+                                                tx.detectedDirection === 'EXPORT' 
+                                                  ? 'border-blue-400 bg-blue-50/80 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' 
+                                                  : tx.detectedDirection === 'IMPORT'
+                                                  ? 'border-emerald-400 bg-emerald-50/80 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                                  : 'border-slate-300 bg-slate-50 text-slate-700'
+                                              }`}
+                                              title={tx.customsDocTypeName || ''}
+                                            >
+                                              {tx.customsDocTypeName ? `${tx.customsDocTypeName} (${tx.customsDocType})` : `ประเภท ${tx.customsDocType}`}
+                                            </Badge>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TableCell>
                                     <TableCell className="py-1.5 px-2">{tx.currencyCode}</TableCell>
                                     <TableCell className="py-1.5 px-2 font-semibold">{totalVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
                                     <TableCell className="py-1.5 px-2">
@@ -785,56 +923,61 @@ export default function ImportTransactionsPage() {
                                       <TableCell colSpan={9} className="p-3 pl-12">
                                         <div className="space-y-3">
                                           <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">รายการอินวอยและสินค้า ({tx.invoices.length} อินวอย)</h4>
-                                          {tx.invoices.map((inv, iIdx) => (
-                                            <div key={iIdx} className="bg-background rounded border p-2.5 space-y-2">
-                                              <div className="flex justify-between text-xs font-medium">
-                                                <span>Invoice: {inv.invoiceNumber} ({inv.invoiceDate})</span>
-                                                <span>ยอดรวม: {inv.items.reduce((s, it) => s + it.totalPrice, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} {tx.currencyCode}</span>
+                                          {tx.invoices.map((inv, iIdx) => {
+                                            const rowEffType = tx.detectedDirection === 'EXPORT' ? 'EXPORT' : (tx.detectedDirection === 'IMPORT' ? 'IMPORT' : importType);
+                                            const isExportRow = rowEffType === 'EXPORT';
+                                            const valTypeLabel = isExportRow ? 'FOB' : 'CIF';
+                                            return (
+                                              <div key={iIdx} className="bg-background rounded border p-2.5 space-y-2">
+                                                <div className="flex justify-between text-xs font-medium">
+                                                  <span>Invoice: {inv.invoiceNumber} ({inv.invoiceDate})</span>
+                                                  <span>ยอดรวม: {inv.items.reduce((s, it) => s + it.totalPrice, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} {tx.currencyCode}</span>
+                                                </div>
+                                                <Table className="text-[11px]">
+                                                  <TableHeader>
+                                                    <TableRow className="h-6">
+                                                      <TableHead className="h-6">ลำดับ</TableHead>
+                                                      <TableHead className="h-6">ชื่อสินค้า</TableHead>
+                                                      <TableHead className="h-6 text-right">จำนวน</TableHead>
+                                                      <TableHead className="h-6 text-right">นน. (NW)</TableHead>
+                                                      <TableHead className="h-6 text-right">ราคาต่อหน่วย</TableHead>
+                                                      <TableHead className="h-6 text-right">ราคาสินค้า ({tx.currencyCode})</TableHead>
+                                                      <TableHead className="h-6 text-right">ค่าระวาง ({tx.currencyCode})</TableHead>
+                                                      <TableHead className="h-6 text-right">ค่าประกัน ({tx.currencyCode})</TableHead>
+                                                      <TableHead className="h-6 text-right font-bold text-foreground">รวม {valTypeLabel} ({tx.currencyCode})</TableHead>
+                                                      <TableHead className="h-6 text-right text-primary font-bold">รวม {valTypeLabel} (THB)</TableHead>
+                                                    </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                    {inv.items.map((it, itIdx) => {
+                                                      const exRate = parseFloat(settings.exchangeRate) || 0;
+                                                      const baseFcy = (it.fobPrice !== undefined && it.fobPrice > 0) ? it.fobPrice : (it.totalPrice || 0);
+                                                      const freightFcy = it.freight || 0;
+                                                      const insFcy = it.insurance || 0;
+                                                      const itemValForeign = isExportRow ? baseFcy : (baseFcy + freightFcy + insFcy);
+                                                      const thbVal = exRate > 0 ? Math.round(itemValForeign * exRate * 100) / 100 : 0;
+                                                      return (
+                                                        <TableRow key={itIdx} className="h-6">
+                                                          <TableCell className="py-1">{it.itemNo || itIdx + 1}</TableCell>
+                                                          <TableCell className="py-1 font-medium">{it.goodsName}</TableCell>
+                                                          <TableCell className="py-1 text-right">{it.quantity}</TableCell>
+                                                          <TableCell className="py-1 text-right text-muted-foreground">{it.netWeight ? it.netWeight.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</TableCell>
+                                                          <TableCell className="py-1 text-right">{it.price ? it.price.toLocaleString('en-US', { minimumFractionDigits: 4 }) : '-'}</TableCell>
+                                                          <TableCell className="py-1 text-right font-medium">{baseFcy.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                          <TableCell className="py-1 text-right text-muted-foreground">{freightFcy > 0 ? freightFcy.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}</TableCell>
+                                                          <TableCell className="py-1 text-right text-muted-foreground">{insFcy > 0 ? insFcy.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}</TableCell>
+                                                          <TableCell className="py-1 text-right font-bold text-foreground">{itemValForeign.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
+                                                          <TableCell className="py-1 text-right text-primary font-semibold">
+                                                            {thbVal > 0 ? `฿${thbVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : (exRate > 0 ? '฿0.00' : <span className="text-muted-foreground text-[10px] font-normal font-sans">(รอเลือกวันเรท)</span>)}
+                                                          </TableCell>
+                                                        </TableRow>
+                                                      );
+                                                    })}
+                                                  </TableBody>
+                                                </Table>
                                               </div>
-                                              <Table className="text-[11px]">
-                                                <TableHeader>
-                                                  <TableRow className="h-6">
-                                                    <TableHead className="h-6">ลำดับ</TableHead>
-                                                    <TableHead className="h-6">ชื่อสินค้า</TableHead>
-                                                    <TableHead className="h-6 text-right">จำนวน</TableHead>
-                                                    <TableHead className="h-6 text-right">นน. (NW)</TableHead>
-                                                    <TableHead className="h-6 text-right">ราคาต่อหน่วย</TableHead>
-                                                    <TableHead className="h-6 text-right">ราคาสินค้า ({tx.currencyCode})</TableHead>
-                                                    <TableHead className="h-6 text-right">ค่าระวาง ({tx.currencyCode})</TableHead>
-                                                    <TableHead className="h-6 text-right">ค่าประกัน ({tx.currencyCode})</TableHead>
-                                                    <TableHead className="h-6 text-right font-bold text-foreground">รวม CIF ({tx.currencyCode})</TableHead>
-                                                    <TableHead className="h-6 text-right text-primary font-bold">รวม CIF (THB)</TableHead>
-                                                  </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                  {inv.items.map((it, itIdx) => {
-                                                    const exRate = parseFloat(settings.exchangeRate) || 0;
-                                                    const baseFcy = (it.fobPrice !== undefined && it.fobPrice > 0) ? it.fobPrice : (it.totalPrice || 0);
-                                                    const freightFcy = it.freight || 0;
-                                                    const insFcy = it.insurance || 0;
-                                                    const cifForeign = baseFcy + freightFcy + insFcy;
-                                                    const thbVal = exRate > 0 ? Math.round(cifForeign * exRate * 100) / 100 : 0;
-                                                    return (
-                                                      <TableRow key={itIdx} className="h-6">
-                                                        <TableCell className="py-1">{it.itemNo || itIdx + 1}</TableCell>
-                                                        <TableCell className="py-1 font-medium">{it.goodsName}</TableCell>
-                                                        <TableCell className="py-1 text-right">{it.quantity}</TableCell>
-                                                        <TableCell className="py-1 text-right text-muted-foreground">{it.netWeight ? it.netWeight.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</TableCell>
-                                                        <TableCell className="py-1 text-right">{it.price ? it.price.toLocaleString('en-US', { minimumFractionDigits: 4 }) : '-'}</TableCell>
-                                                        <TableCell className="py-1 text-right font-medium">{baseFcy.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                        <TableCell className="py-1 text-right text-muted-foreground">{freightFcy > 0 ? freightFcy.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}</TableCell>
-                                                        <TableCell className="py-1 text-right text-muted-foreground">{insFcy > 0 ? insFcy.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}</TableCell>
-                                                        <TableCell className="py-1 text-right font-bold text-foreground">{cifForeign.toLocaleString('en-US', { minimumFractionDigits: 2 })}</TableCell>
-                                                        <TableCell className="py-1 text-right text-primary font-semibold">
-                                                          {thbVal > 0 ? `฿${thbVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : (exRate > 0 ? '฿0.00' : <span className="text-muted-foreground text-[10px] font-normal font-sans">(รอเลือกวันเรท)</span>)}
-                                                        </TableCell>
-                                                      </TableRow>
-                                                    );
-                                                  })}
-                                                </TableBody>
-                                              </Table>
-                                            </div>
-                                          ))}
+                                            );
+                                          })}
                                         </div>
                                       </TableCell>
                                     </TableRow>

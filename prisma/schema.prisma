@@ -104,6 +104,8 @@ model Transaction {
   rateDate          DateTime @map("rate_date")
   rateSource        String   @default("BOT") @map("rate_source")
   type              String   @default("IMPORT") @map("type") // IMPORT | EXPORT
+  customsDocType    String?  @map("customs_doc_type") // e.g. "1", "0", "D", "A"
+  customsDocTypeName String? @map("customs_doc_type_name") // e.g. "ใบขนสินค้าขาออก", "ใบขนสินค้าขาเข้า"
 
   createdBy  String   @map("created_by")
   companyId  Int?     @map("company_id")
