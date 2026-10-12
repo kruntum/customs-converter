@@ -3,9 +3,10 @@ services:
     image: postgres:17-alpine
     container_name: customs-converter-db-prod
     restart: unless-stopped
-    # Bind only to local loopback interface for local backup access, blocking external network access
+    # External LAN access for inspection (Uncomment below line and comment 5432:5432 to restore local loopback only)
     ports:
-      - "127.0.0.1:5432:5432"
+      - "5432:5432"
+      # - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-customs_converter_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
