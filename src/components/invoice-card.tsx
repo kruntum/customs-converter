@@ -137,30 +137,30 @@ export function InvoiceCard({
 
             {/* Items table */}
             <div className="border rounded-md overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs table-fixed">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    <th className="py-2 px-1 text-center w-[28px]">#</th>
-                    <th className="py-2 px-1.5 text-left min-w-[150px] md:min-w-[180px]">ชื่อสินค้า *</th>
-                    <th className="py-2 px-1 text-right w-[65px]">จำนวน</th>
+                    <th className="py-2 px-1 text-center w-8">#</th>
+                    <th className={`py-2 px-1.5 text-left ${isImport ? 'w-[220px]' : 'w-[240px]'}`}>ชื่อสินค้า *</th>
+                    <th className={`py-2 px-1 text-right ${isImport ? 'w-[65px]' : 'w-[80px]'}`}>จำนวน</th>
                     {isImport ? (
                       <>
-                        <th className="py-2 px-1 text-right w-[85px]">นน. (NW)</th>
-                        <th className="py-2 px-1 text-right w-[95px]">ราคา/หน่วย</th>
-                        <th className="py-2 px-1 text-right w-[100px]">FOB</th>
-                        <th className="py-2 px-1 text-right w-[95px]">ค่าระวาง</th>
-                        <th className="py-2 px-1 text-right w-[95px]">ค่าประกัน</th>
-                        <th className="py-2 px-1 text-right w-[120px] text-primary font-bold">รวม ({currencyCode}) *</th>
+                        <th className="py-2 px-1 text-right w-[10%]">นน. (NW)</th>
+                        <th className="py-2 px-1 text-right w-[10%]">ราคา/หน่วย</th>
+                        <th className="py-2 px-1 text-right w-[11%]">FOB</th>
+                        <th className="py-2 px-1 text-right w-[10%]">ค่าระวาง</th>
+                        <th className="py-2 px-1 text-right w-[10%]">ค่าประกัน</th>
+                        <th className="py-2 px-1 text-right w-[14%] text-primary font-bold">รวม ({currencyCode}) *</th>
                       </>
                     ) : (
                       <>
-                        <th className="py-2 px-1 text-right w-[100px]">น้ำหนัก</th>
-                        <th className="py-2 px-1 text-right w-[110px]">ราคา/หน่วย *</th>
-                        <th className="py-2 px-1 text-right w-[130px] text-primary font-bold">รวม FOB ({currencyCode}) *</th>
+                        <th className="py-2 px-1 text-right w-[18%]">น้ำหนัก</th>
+                        <th className="py-2 px-1 text-right w-[18%]">ราคา/หน่วย *</th>
+                        <th className="py-2 px-1 text-right w-[22%] text-primary font-bold">รวม FOB ({currencyCode}) *</th>
                       </>
                     )}
-                    <th className="py-2 px-2 text-right w-[125px]">THB (CIF)</th>
-                    <th className="py-2 px-1 w-[32px]"></th>
+                    <th className={`py-2 px-2 text-right ${isImport ? 'w-[16%]' : 'w-[22%]'}`}>THB (CIF)</th>
+                    <th className="py-2 px-1 w-9 text-center"></th>
                   </tr>
                 </thead>
                 <tbody>
