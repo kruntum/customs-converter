@@ -1,8 +1,42 @@
 import { Hono } from 'hono';
-import { fetchBotExchangeRate, fetchBotExchangeRateWithFallback } from '../services/bot-api.js';
+import { fetchBotExchangeRate, fetchBotExchangeRateWithFallback, fetchDirectExchangeRate } from '../services/bot-api.js';
 import { prisma } from '../db.js';
 
 const exchangeRateRoutes = new Hono();
+
+// GET /api/rates/direct/:currency/:date
+// Fetches rate for exact date chosen by user WITHOUT T-1 deduction
+exchangeRateRoutes.get('/direct/:currency/:date', async (c) => {
+    const currency = c.req.param('currency').toUpperCase();
+    const date = c.req.param('date');
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return c.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, 400);
+    }
+
+    if (currency === 'THB') {
+        return c.json({
+            data: {
+                currencyId: 'THB',
+                period: date,
+                buyingTransfer: '1.0000000',
+                selling: '1.0000000',
+                source: 'SYSTEM',
+            },
+        });
+    }
+
+    const rate = await fetchDirectExchangeRate(currency, date);
+
+    if (!rate) {
+        return c.json({
+            error: `ไม่พบอัตราแลกเปลี่ยนสำหรับ ${currency} ในวันที่ ${date} คุณสามารถระบุตัวเลขเรทเองได้`,
+            data: null,
+        }, 404);
+    }
+
+    return c.json({ data: rate });
+});
 
 // GET /api/rates/bot-fallback/:currency/:date
 exchangeRateRoutes.get('/bot-fallback/:currency/:date', async (c) => {
@@ -21,6 +55,7 @@ exchangeRateRoutes.get('/bot-fallback/:currency/:date', async (c) => {
                 currencyId: 'THB',
                 period: date,
                 buyingTransfer: '1.0000000',
+                selling: '1.0000000',
                 source: 'SYSTEM',
             },
         });
@@ -46,12 +81,6 @@ exchangeRateRoutes.get('/:currency/:date', async (c) => {
     // Validate date format YYYY-MM-DD
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return c.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, 400);
-    }
-
-    // Validate currency
-    const validCurrencies = ['CNY', 'USD', 'EUR', 'JPY', 'GBP'];
-    if (!validCurrencies.includes(currency)) {
-        return c.json({ error: `Invalid currency. Supported: ${validCurrencies.join(', ')}` }, 400);
     }
 
     // THB to THB is always 1

@@ -38,7 +38,7 @@ const today = format(new Date(), 'yyyy-MM-dd');
 
 export function TransactionDialog({ open, onOpenChange, companyId, editId, onSaved }: TransactionDialogProps) {
   const { createTransaction, updateTransaction, fetchTransaction } = useTransactionStore();
-  const { rate, loading: rateLoading, fetchRate, clearRate } = useExchangeRate();
+  const { rate, loading: rateLoading, fetchCustomsRate, fetchDirectRate, clearRate } = useExchangeRate();
   const { fetchCustomers } = useCustomerStore();
   const { companies, fetchCompanies } = useCompanyStore();
   const activeCompany = companies.find((c) => c.id === companyId);
@@ -139,40 +139,81 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
     }
   }, [open, editId, fetchTransaction, clearRate]);
 
-  // Auto-fetch exchange rate ONLY on new transaction creation
+  // Auto-fetch customs exchange rate ONLY on initial dialog open when creating new
   useEffect(() => {
     if (open && !isEdit && currencyCode && declarationDate && !isTHB) {
-      fetchRate(currencyCode, declarationDate);
+      fetchCustomsRate(currencyCode, declarationDate).then(data => {
+        if (data && data.buyingTransfer) {
+          setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
+          setRateSource(data.source || 'BOT');
+          if (data.period) {
+            setRateDate(data.period);
+          }
+        }
+      });
     }
     if (isTHB) {
       setExchangeRate('1');
       setRateSource('THB');
     }
-  }, [open, isEdit, currencyCode, declarationDate, isTHB, fetchRate]);
+  }, [open, isEdit, currencyCode, isTHB, fetchCustomsRate]);
 
-  // Apply fetched rate from fetchRate action
-  useEffect(() => {
-    if (rate && !isTHB && rate.buyingTransfer) {
-      setExchangeRate(type === 'IMPORT' ? (rate.selling || rate.buyingTransfer) : rate.buyingTransfer);
-      setRateSource(rate.source || 'BOT');
-      if (rate.period) {
-        setRateDate(rate.period);
+  const handleDeclarationDateChange = async (val: string) => {
+    setDeclarationDate(val);
+    if (!val || currencyCode === 'THB') return;
+    
+    // Automatically calculate and fetch customs rate (T-1 rule) for this declaration date
+    const data = await fetchCustomsRate(currencyCode, val);
+    if (data && data.buyingTransfer) {
+      setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
+      setRateSource(data.source || 'BOT');
+      if (data.period) {
+        setRateDate(data.period);
       }
     }
-  }, [rate, isTHB, type]);
-
-  const handleDeclarationDateChange = (val: string) => {
-    setDeclarationDate(val);
   };
 
-  const handleCurrencyChange = (val: string) => {
+  const handleCurrencyChange = async (val: string) => {
     setCurrencyCode(val);
+    if (val === 'THB') {
+      setExchangeRate('1');
+      setRateSource('THB');
+      return;
+    }
+    const targetDate = rateDate || declarationDate;
+    if (targetDate) {
+      const data = await fetchDirectRate(val, targetDate);
+      if (data && data.buyingTransfer) {
+        setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
+        setRateSource(data.source || 'BOT');
+      }
+    }
   };
 
-  const handleRateDateChange = (val: string) => {
+  const handleRateDateChange = async (val: string) => {
+    // 1. ALWAYS retain the user's chosen date in rateDate! NEVER OVERWRITE IT!
     setRateDate(val);
-    if (currencyCode && !isTHB && val) {
-      fetchRate(currencyCode, val);
+    if (!val || currencyCode === 'THB') return;
+
+    // 2. Fetch the direct exchange rate for THIS EXACT DATE (no T-1 deduction!)
+    const data = await fetchDirectRate(currencyCode, val);
+    if (data && data.buyingTransfer) {
+      setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
+      setRateSource(data.source || 'BOT');
+      // NEVER overwrite rateDate! It stays as 'val'!
+      if (data.period !== val) {
+        toast.info(`อัตราแลกเปลี่ยนอ้างอิงจากวันทำการล่าสุด (${data.period})`, { position: 'top-center' });
+      }
+    } else {
+      toast.warning(`ไม่พบประกาศอัตราแลกเปลี่ยน ธปท. ในวันที่ ${val} (วันหยุด/ไม่มีเรท) คุณสามารถระบุตัวเลขเรทเองได้`, { position: 'top-center' });
+      setRateSource('MANUAL');
+    }
+  };
+
+  const handleTypeChange = (newType: string) => {
+    setType(newType);
+    if (rate && rateSource !== 'MANUAL' && !isTHB && rate.buyingTransfer) {
+      setExchangeRate(newType === 'IMPORT' ? (rate.selling || rate.buyingTransfer) : rate.buyingTransfer);
     }
   };
 
@@ -306,7 +347,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <div>
                       <Label className="text-xs">ประเภทใบขน *</Label>
-                      <Select value={type} onValueChange={(val) => setType(val)}>
+                      <Select value={type} onValueChange={handleTypeChange}>
                         <SelectTrigger className="h-7 text-xs bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/40 focus:ring-warning/50">
                           <SelectValue placeholder="เลือกประเภท" />
                         </SelectTrigger>

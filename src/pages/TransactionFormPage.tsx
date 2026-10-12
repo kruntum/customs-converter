@@ -58,7 +58,7 @@ export default function TransactionFormPage() {
     }
   }, [companies, fetchCompanies]);
 
-  const { rate, loading: rateLoading, fetchRate } = useExchangeRate();
+  const { loading: rateLoading, fetchCustomsRate, fetchDirectRate } = useExchangeRate();
   const isEdit = !!transactionId;
 
   // Header state
@@ -120,24 +120,76 @@ export default function TransactionFormPage() {
     }
   }, [isEdit, transactionId, fetchTransaction]);
 
-  // Auto-fetch exchange rate
+  // Auto-fetch customs exchange rate ONLY on new transaction creation initial load
   useEffect(() => {
-    if (currencyCode && rateDate && !isTHB) {
-      fetchRate(currencyCode, rateDate);
+    if (!isEdit && currencyCode && declarationDate && !isTHB) {
+      fetchCustomsRate(currencyCode, declarationDate).then(data => {
+        if (data && data.buyingTransfer) {
+          setExchangeRate(data.buyingTransfer);
+          setRateSource(data.source || 'BOT');
+          if (data.period) {
+            setRateDate(data.period);
+          }
+        }
+      });
     }
     if (isTHB) {
       setExchangeRate('1');
       setRateSource('THB');
     }
-  }, [currencyCode, rateDate, isTHB, fetchRate]);
+  }, [isEdit, currencyCode, isTHB, fetchCustomsRate]);
 
-  // Apply fetched rate
-  useEffect(() => {
-    if (rate && !isTHB) {
-      setExchangeRate(rate.buyingTransfer);
-      setRateSource(rate.source);
+  const handleDeclarationDateChange = async (val: string) => {
+    setDeclarationDate(val);
+    if (!val || currencyCode === 'THB') return;
+    
+    // Automatically calculate and fetch customs rate (T-1 rule) for this declaration date
+    const data = await fetchCustomsRate(currencyCode, val);
+    if (data && data.buyingTransfer) {
+      setExchangeRate(data.buyingTransfer);
+      setRateSource(data.source || 'BOT');
+      if (data.period) {
+        setRateDate(data.period);
+      }
     }
-  }, [rate, isTHB]);
+  };
+
+  const handleCurrencyChange = async (val: string) => {
+    setCurrencyCode(val);
+    if (val === 'THB') {
+      setExchangeRate('1');
+      setRateSource('THB');
+      return;
+    }
+    const targetDate = rateDate || declarationDate;
+    if (targetDate) {
+      const data = await fetchDirectRate(val, targetDate);
+      if (data && data.buyingTransfer) {
+        setExchangeRate(data.buyingTransfer);
+        setRateSource(data.source || 'BOT');
+      }
+    }
+  };
+
+  const handleRateDateChange = async (val: string) => {
+    // 1. ALWAYS retain the user's chosen date in rateDate! NEVER OVERWRITE IT!
+    setRateDate(val);
+    if (!val || currencyCode === 'THB') return;
+
+    // 2. Fetch the direct exchange rate for THIS EXACT DATE (no T-1 deduction!)
+    const data = await fetchDirectRate(currencyCode, val);
+    if (data && data.buyingTransfer) {
+      setExchangeRate(data.buyingTransfer);
+      setRateSource(data.source || 'BOT');
+      // NEVER overwrite rateDate! It stays as 'val'!
+      if (data.period !== val) {
+        toast.info(`อัตราแลกเปลี่ยนอ้างอิงจากวันทำการล่าสุด (${data.period})`, { position: 'top-center' });
+      }
+    } else {
+      toast.warning(`ไม่พบประกาศอัตราแลกเปลี่ยน ธปท. ในวันที่ ${val} (วันหยุด/ไม่มีเรท) คุณสามารถระบุตัวเลขเรทเองได้`, { position: 'top-center' });
+      setRateSource('MANUAL');
+    }
+  };
 
   // Calculations
   const rateNum = parseFloat(exchangeRate) || 0;
@@ -296,13 +348,13 @@ export default function TransactionFormPage() {
               </div>
               <div className="space-y-2">
                 <Label>วันที่ใบขน <span className="text-destructive">*</span></Label>
-                <DatePicker value={declarationDate} onChange={setDeclarationDate} />
+                <DatePicker value={declarationDate} onChange={handleDeclarationDateChange} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>สกุลเงิน <span className="text-destructive">*</span></Label>
-                <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                <Select value={currencyCode} onValueChange={handleCurrencyChange}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {currencies.map((c) => (
@@ -330,7 +382,7 @@ export default function TransactionFormPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>วันที่อัตราแลกเปลี่ยน</Label>
-                    <DatePicker value={rateDate} onChange={setRateDate} />
+                    <DatePicker value={rateDate} onChange={handleRateDateChange} />
                   </div>
                 </>
               )}

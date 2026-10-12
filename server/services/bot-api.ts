@@ -280,3 +280,137 @@ export async function fetchBotExchangeRateWithFallback(
     }
 }
 
+/**
+ * Fetch exchange rate for an exact date chosen directly by the user (Rate Date).
+ * Checks the exact date in local DB and BOT API.
+ * If the exact date has no rate (e.g. weekend or holiday), it looks back up to 30 days
+ * to return the most recent available rate, but does NOT force T - 1 subtraction.
+ */
+export async function fetchDirectExchangeRate(
+    currency: string,
+    dateStr: string,
+): Promise<ExchangeRateResult | null> {
+    let targetDate = new Date(dateStr);
+    if (isNaN(targetDate.getTime())) {
+        targetDate = new Date();
+    }
+    // End of the day chosen by the user
+    targetDate.setUTCHours(23, 59, 59, 999);
+
+    // 1. Check local DB for exact date or most recent rate on or before targetDate
+    try {
+        const localRate = await prisma.exchangeRate.findFirst({
+            where: {
+                currencyCode: currency,
+                rateDate: { lte: targetDate }
+            },
+            orderBy: {
+                rateDate: 'desc'
+            }
+        });
+
+        if (localRate) {
+            const diffTime = Math.abs(targetDate.getTime() - localRate.rateDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 30) {
+                return {
+                    currencyId: localRate.currencyCode,
+                    period: format(localRate.rateDate, 'yyyy-MM-dd'),
+                    buyingTransfer: localRate.buyingTransfer.toString(),
+                    selling: localRate.selling ? localRate.selling.toString() : null,
+                    source: 'LOCAL_DB'
+                };
+            }
+        }
+    } catch (dbError) {
+        console.error('Error fetching direct exchange rate from local DB:', dbError);
+    }
+
+    // 2. Fetch from BOT API: query a 30-day window ending ON dateStr (no T-1 shift!)
+    const apiKey = cleanApiKey(process.env.BOT_API_KEY);
+    if (!apiKey) {
+        console.warn('BOT_API_KEY not configured or invalid, returning null');
+        return null;
+    }
+
+    try {
+        const endDateStr = dateStr;
+        const startDate = subDays(targetDate, 30);
+        const startDateStr = format(startDate, 'yyyy-MM-dd');
+
+        const url = `https://gateway.api.bot.or.th/Stat-ExchangeRate/v2/DAILY_AVG_EXG_RATE/?start_period=${startDateStr}&end_period=${endDateStr}&currency=${currency}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': '*/*',
+                'Authorization': apiKey,
+            },
+        });
+
+        if (!response.ok) {
+            console.error(`BOT API error in direct fetch: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        const data: BotApiResponse = await response.json();
+        const details = data.result?.data?.data_detail;
+
+        if (!details || details.length === 0) {
+            return null;
+        }
+
+        const validRates = details.filter(item => item && item.period && item.buying_transfer);
+        if (validRates.length === 0) {
+            return null;
+        }
+
+        // Cache all retrieved daily rates in the local database
+        try {
+            for (const item of validRates) {
+                const itemDate = new Date(item.period);
+                if (!isNaN(itemDate.getTime()) && item.buying_transfer) {
+                    await prisma.exchangeRate.upsert({
+                        where: {
+                            currencyCode_rateDate: {
+                                currencyCode: currency,
+                                rateDate: itemDate
+                            }
+                        },
+                        update: {
+                            buyingTransfer: item.buying_transfer,
+                            selling: item.selling || null,
+                        },
+                        create: {
+                            currencyCode: currency,
+                            rateDate: itemDate,
+                            buyingTransfer: item.buying_transfer,
+                            selling: item.selling || null,
+                        }
+                    });
+                }
+            }
+        } catch (cacheError) {
+            console.error('Failed to cache direct exchange rates in database:', cacheError);
+        }
+
+        const sorted = [...validRates].sort((a, b) => b.period.localeCompare(a.period));
+        const matched = sorted.find(d => d.period <= dateStr);
+        if (matched) {
+            return {
+                currencyId: matched.currency_id,
+                period: matched.period,
+                buyingTransfer: matched.buying_transfer,
+                selling: matched.selling || null,
+                source: 'BOT'
+            };
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error in fetchDirectExchangeRate:', error);
+        return null;
+    }
+}
+
+
