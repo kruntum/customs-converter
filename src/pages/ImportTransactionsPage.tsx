@@ -887,15 +887,28 @@ export default function ImportTransactionsPage() {
                                             className="h-7 text-xs w-[80px] bg-warning/15 border-warning/30 px-1.5 text-right shrink-0 font-medium" 
                                           />
                                           {settings.botRateFound && (
-                                            settings.rateSource === 'LOCAL_DB' ? (
-                                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-sans shrink-0" title={`เรทวันที่: ${settings.botActualDate} (ฐานข้อมูลในระบบ)`}>
-                                                ระบบ
+                                            <>
+                                              <Badge 
+                                                variant="outline" 
+                                                className={`text-[10px] px-1.5 py-0 h-5 font-sans shrink-0 ${
+                                                  (tx.detectedDirection || importType) === 'EXPORT'
+                                                    ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                                    : 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                                }`}
+                                                title={(tx.detectedDirection || importType) === 'EXPORT' ? 'เกณฑ์ใบขนสินค้าขาออก: อัตราซื้อถัวเฉลี่ย (Buying Transfer)' : 'เกณฑ์ใบขนสินค้าขาเข้า: อัตราขาย (Selling)'}
+                                              >
+                                                {(tx.detectedDirection || importType) === 'EXPORT' ? 'เรทซื้อ' : 'เรทขาย'}
                                               </Badge>
-                                            ) : (
-                                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-sans shrink-0" title={`เรทวันที่: ${settings.botActualDate} (ธปท. BOT)`}>
-                                                BOT
-                                              </Badge>
-                                            )
+                                              {settings.rateSource === 'LOCAL_DB' ? (
+                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-sans shrink-0" title={`เรทวันที่: ${settings.botActualDate} (ฐานข้อมูลในระบบ)`}>
+                                                  ระบบ
+                                                </Badge>
+                                              ) : (
+                                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 font-sans shrink-0" title={`เรทวันที่: ${settings.botActualDate} (ธปท. BOT)`}>
+                                                  BOT
+                                                </Badge>
+                                              )}
+                                            </>
                                           )}
                                           {settings.botActualDate && (
                                             <span className="text-[10px] text-muted-foreground shrink-0">

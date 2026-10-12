@@ -120,6 +120,9 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
           setRateDate(tx.rateDate.split('T')[0]);
           setRateSource(tx.rateSource || 'BOT');
           setNotes(tx.notes || '');
+          if (tx.currencyCode && tx.currencyCode !== 'THB' && tx.rateDate) {
+            fetchDirectRate(tx.currencyCode, tx.rateDate.split('T')[0]);
+          }
           if (tx.invoices && tx.invoices.length > 0) {
             setInvoices(tx.invoices.map((inv) => ({
               invoiceNumber: inv.invoiceNumber,
@@ -137,7 +140,7 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
         .catch((err) => toast.error(err.message))
         .finally(() => setLoadingData(false));
     }
-  }, [open, editId, fetchTransaction, clearRate]);
+  }, [open, editId, fetchTransaction, clearRate, fetchDirectRate]);
 
   // Auto-fetch customs exchange rate ONLY on initial dialog open when creating new
   useEffect(() => {
@@ -437,9 +440,80 @@ export function TransactionDialog({ open, onOpenChange, companyId, editId, onSav
                   )}
                 </div>
                 {rateNum > 0 && !isTHB && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-md px-3 py-1.5">
-                    <p className="text-xs">
-                      📌 อัตราแลกเปลี่ยนนี้ใช้กับ<strong>ทุกอินวอย</strong>: 1 {currencyCode} = {formatNumber(exchangeRate, 6)} THB
+                  <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <span>📌 1 {currencyCode} = {formatNumber(exchangeRate, 6)} THB</span>
+                        <span className="text-muted-foreground font-normal">(ใช้กับทุกอินวอย)</span>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs px-2 py-0.5 font-medium ${
+                          type === 'EXPORT'
+                            ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                            : 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        }`}
+                      >
+                        {type === 'EXPORT' ? '🛒 อัตราซื้อถัวเฉลี่ย (Buying Transfer)' : '🏷️ อัตราขาย (Selling Rate)'}
+                      </Badge>
+                    </div>
+
+                    {/* BOT Rates Comparison & Selector */}
+                    {rate && (rate.buyingTransfer || rate.selling) && (
+                      <div className="pt-2 border-t border-border/60 flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-muted-foreground text-[11px]">
+                          เปรียบเทียบเรท ธปท. ({rate.period}):
+                        </span>
+                        {rate.buyingTransfer && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExchangeRate(rate.buyingTransfer);
+                              setRateSource(rate.source || 'BOT');
+                            }}
+                            className={`px-2 py-1 rounded text-xs transition-all flex items-center gap-1.5 border ${
+                              exchangeRate === rate.buyingTransfer
+                                ? 'bg-blue-100/90 border-blue-400 text-blue-800 dark:bg-blue-900/70 dark:border-blue-500 dark:text-blue-200 font-semibold ring-1 ring-blue-400/50'
+                                : 'bg-background/80 border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                            title="คลิกเพื่อใช้อัตราซื้อนี้"
+                          >
+                            <span>🛒 อัตราซื้อ (เงินโอน):</span>
+                            <span className="font-mono font-bold">{formatNumber(rate.buyingTransfer, 4)}</span>
+                            {type === 'EXPORT' && (
+                              <span className="text-[10px] px-1 py-0.5 rounded bg-blue-200/90 dark:bg-blue-800 text-blue-800 dark:text-blue-100 font-medium">
+                                เกณฑ์ขาออก
+                              </span>
+                            )}
+                          </button>
+                        )}
+                        {rate.selling && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExchangeRate(rate.selling!);
+                              setRateSource(rate.source || 'BOT');
+                            }}
+                            className={`px-2 py-1 rounded text-xs transition-all flex items-center gap-1.5 border ${
+                              exchangeRate === rate.selling
+                                ? 'bg-emerald-100/90 border-emerald-400 text-emerald-800 dark:bg-emerald-900/70 dark:border-emerald-500 dark:text-emerald-200 font-semibold ring-1 ring-emerald-400/50'
+                                : 'bg-background/80 border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                            title="คลิกเพื่อใช้อัตราขายนี้"
+                          >
+                            <span>🏷️ อัตราขาย:</span>
+                            <span className="font-mono font-bold">{formatNumber(rate.selling, 4)}</span>
+                            {type === 'IMPORT' && (
+                              <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-200/90 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-100 font-medium">
+                                เกณฑ์ขาเข้า
+                              </span>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      💡 กรมศุลกากรกำหนด: ใบขนสินค้า<strong>ขาออก</strong>ใช้อัตราซื้อถัวเฉลี่ย (Buying Transfer) และ<strong>ขาเข้า</strong>ใช้อัตราขาย (Selling) ของ ธปท.
                     </p>
                   </div>
                 )}

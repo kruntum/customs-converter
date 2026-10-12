@@ -58,10 +58,11 @@ export default function TransactionFormPage() {
     }
   }, [companies, fetchCompanies]);
 
-  const { loading: rateLoading, fetchCustomsRate, fetchDirectRate } = useExchangeRate();
+  const { rate, loading: rateLoading, fetchCustomsRate, fetchDirectRate, clearRate } = useExchangeRate();
   const isEdit = !!transactionId;
 
   // Header state
+  const [type, setType] = useState<'IMPORT' | 'EXPORT'>('IMPORT');
   const [declarationNumber, setDeclarationNumber] = useState('');
   const [declarationDate, setDeclarationDate] = useState(today);
   const [currencyCode, setCurrencyCode] = useState('CNY');
@@ -92,15 +93,20 @@ export default function TransactionFormPage() {
   useEffect(() => {
     if (isEdit && transactionId) {
       setLoadingData(true);
+      clearRate();
       fetchTransaction(parseInt(transactionId))
         .then((tx) => {
           setDeclarationNumber(tx.declarationNumber);
+          setType((tx.type as 'IMPORT' | 'EXPORT') || 'IMPORT');
           setDeclarationDate(tx.declarationDate.split('T')[0]);
           setCurrencyCode(tx.currencyCode);
           setExchangeRate(tx.exchangeRate);
           setRateDate(tx.rateDate.split('T')[0]);
           setRateSource(tx.rateSource);
           setNotes(tx.notes || '');
+          if (tx.currencyCode && tx.currencyCode !== 'THB' && tx.rateDate) {
+            fetchDirectRate(tx.currencyCode, tx.rateDate.split('T')[0]);
+          }
           if (tx.invoices && tx.invoices.length > 0) {
             setInvoices(tx.invoices.map((inv) => ({
               invoiceNumber: inv.invoiceNumber,
@@ -118,14 +124,14 @@ export default function TransactionFormPage() {
         .catch((err) => toast.error(err.message))
         .finally(() => setLoadingData(false));
     }
-  }, [isEdit, transactionId, fetchTransaction]);
+  }, [isEdit, transactionId, fetchTransaction, fetchDirectRate, clearRate]);
 
   // Auto-fetch customs exchange rate ONLY on new transaction creation initial load
   useEffect(() => {
     if (!isEdit && currencyCode && declarationDate && !isTHB) {
       fetchCustomsRate(currencyCode, declarationDate).then(data => {
         if (data && data.buyingTransfer) {
-          setExchangeRate(data.buyingTransfer);
+          setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
           setRateSource(data.source || 'BOT');
           if (data.period) {
             setRateDate(data.period);
@@ -139,6 +145,13 @@ export default function TransactionFormPage() {
     }
   }, [isEdit, currencyCode, isTHB, fetchCustomsRate]);
 
+  const handleTypeChange = (newType: 'IMPORT' | 'EXPORT') => {
+    setType(newType);
+    if (rate && rateSource !== 'MANUAL' && !isTHB && rate.buyingTransfer) {
+      setExchangeRate(newType === 'IMPORT' ? (rate.selling || rate.buyingTransfer) : rate.buyingTransfer);
+    }
+  };
+
   const handleDeclarationDateChange = async (val: string) => {
     setDeclarationDate(val);
     if (!val || currencyCode === 'THB') return;
@@ -146,7 +159,7 @@ export default function TransactionFormPage() {
     // Automatically calculate and fetch customs rate (T-1 rule) for this declaration date
     const data = await fetchCustomsRate(currencyCode, val);
     if (data && data.buyingTransfer) {
-      setExchangeRate(data.buyingTransfer);
+      setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
       setRateSource(data.source || 'BOT');
       if (data.period) {
         setRateDate(data.period);
@@ -165,7 +178,7 @@ export default function TransactionFormPage() {
     if (targetDate) {
       const data = await fetchDirectRate(val, targetDate);
       if (data && data.buyingTransfer) {
-        setExchangeRate(data.buyingTransfer);
+        setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
         setRateSource(data.source || 'BOT');
       }
     }
@@ -179,7 +192,7 @@ export default function TransactionFormPage() {
     // 2. Fetch the direct exchange rate for THIS EXACT DATE (no T-1 deduction!)
     const data = await fetchDirectRate(currencyCode, val);
     if (data && data.buyingTransfer) {
-      setExchangeRate(data.buyingTransfer);
+      setExchangeRate(type === 'IMPORT' ? (data.selling || data.buyingTransfer) : data.buyingTransfer);
       setRateSource(data.source || 'BOT');
       // NEVER overwrite rateDate! It stays as 'val'!
       if (data.period !== val) {
@@ -284,6 +297,7 @@ export default function TransactionFormPage() {
         exchangeRate,
         rateDate,
         rateSource,
+        type,
         companyId: parseInt(companyId!),
         notes,
         invoices: invoices.map((inv) => ({
@@ -340,7 +354,17 @@ export default function TransactionFormPage() {
             <CardTitle className="text-base">ข้อมูลใบขนสินค้า</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>ประเภทใบขน <span className="text-destructive">*</span></Label>
+                <Select value={type} onValueChange={handleTypeChange}>
+                  <SelectTrigger><SelectValue placeholder="เลือกประเภท" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IMPORT">ขาเข้า (Import)</SelectItem>
+                    <SelectItem value="EXPORT">ขาออก (Export)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label>เลขที่ใบขนสินค้า <span className="text-destructive">*</span></Label>
                 <Input placeholder="DEC-2026-001" value={declarationNumber}
@@ -397,9 +421,80 @@ export default function TransactionFormPage() {
               )}
             </div>
             {rateNum > 0 && !isTHB && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                <p className="text-sm">
-                  📌 อัตราแลกเปลี่ยนนี้จะใช้กับ<strong>ทุกอินวอย</strong>ในรายการนี้: <strong>1 {currencyCode} = {formatNumber(exchangeRate, 6)} THB</strong>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span>📌 1 {currencyCode} = {formatNumber(exchangeRate, 6)} THB</span>
+                    <span className="text-muted-foreground font-normal">(ใช้กับทุกอินวอย)</span>
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs px-2.5 py-0.5 font-medium ${
+                      type === 'EXPORT'
+                        ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                        : 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                    }`}
+                  >
+                    {type === 'EXPORT' ? '🛒 อัตราซื้อถัวเฉลี่ย (Buying Transfer)' : '🏷️ อัตราขาย (Selling Rate)'}
+                  </Badge>
+                </div>
+
+                {/* BOT Rates Comparison & Selector */}
+                {rate && (rate.buyingTransfer || rate.selling) && (
+                  <div className="pt-2 border-t border-border/60 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      เปรียบเทียบเรท ธปท. ({rate.period}):
+                    </span>
+                    {rate.buyingTransfer && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExchangeRate(rate.buyingTransfer);
+                          setRateSource(rate.source || 'BOT');
+                        }}
+                        className={`px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 border ${
+                          exchangeRate === rate.buyingTransfer
+                            ? 'bg-blue-100/90 border-blue-400 text-blue-800 dark:bg-blue-900/70 dark:border-blue-500 dark:text-blue-200 font-semibold ring-1 ring-blue-400/50'
+                            : 'bg-background/80 border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                        title="คลิกเพื่อใช้อัตราซื้อนี้"
+                      >
+                        <span>🛒 อัตราซื้อ (เงินโอน):</span>
+                        <span className="font-mono font-bold">{formatNumber(rate.buyingTransfer, 4)}</span>
+                        {type === 'EXPORT' && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-blue-200/90 dark:bg-blue-800 text-blue-800 dark:text-blue-100 font-medium">
+                            เกณฑ์ขาออก
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {rate.selling && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExchangeRate(rate.selling!);
+                          setRateSource(rate.source || 'BOT');
+                        }}
+                        className={`px-2.5 py-1 rounded text-xs transition-all flex items-center gap-1.5 border ${
+                          exchangeRate === rate.selling
+                            ? 'bg-emerald-100/90 border-emerald-400 text-emerald-800 dark:bg-emerald-900/70 dark:border-emerald-500 dark:text-emerald-200 font-semibold ring-1 ring-emerald-400/50'
+                            : 'bg-background/80 border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                        title="คลิกเพื่อใช้อัตราขายนี้"
+                      >
+                        <span>🏷️ อัตราขาย:</span>
+                        <span className="font-mono font-bold">{formatNumber(rate.selling, 4)}</span>
+                        {type === 'IMPORT' && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-200/90 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-100 font-medium">
+                            เกณฑ์ขาเข้า
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  💡 กรมศุลกากรกำหนด: ใบขนสินค้า<strong>ขาออก</strong>ใช้อัตราซื้อถัวเฉลี่ย (Buying Transfer) และ<strong>ขาเข้า</strong>ใช้อัตราขาย (Selling) ของ ธปท.
                 </p>
               </div>
             )}
